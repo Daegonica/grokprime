@@ -39,4 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 
-// Simple comment test for push/pulling on git.
+// Simple comment test for push/pulling on git. (1)
+
+// Second test with ssh token for push/pull easier. (2)
