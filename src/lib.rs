@@ -2,6 +2,7 @@ pub mod models;
 pub mod history;
 pub mod user_input;
 pub mod system_info;
+pub mod tui;
 pub mod prelude;
 
 use crate::prelude::*;

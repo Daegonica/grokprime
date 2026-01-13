@@ -2,6 +2,7 @@ use crate::prelude::*;
 use strum::{EnumString, IntoStaticStr, EnumIter};
 use std::str::FromStr;
 
+#[derive(Debug)]
 pub struct UserInput {
     os_info: OsInfo,
 }
@@ -32,8 +33,8 @@ impl UserInput {
         let cmd = UserCommand::from_str(raw_input).unwrap_or(UserCommand::Unknown);
 
         match cmd {
-            UserCommand::SystemInfo => {
-                let output = self.os_info.display_all();
+            UserCommand::System => {
+                let _output = self.os_info.display_all();
                 InputAction::DoNothing
             },
             UserCommand::Quit | UserCommand::Exit => InputAction::Quit,
@@ -48,7 +49,7 @@ impl UserInput {
 #[strum(serialize_all = "lowercase")]
 #[strum(ascii_case_insensitive)]
 enum UserCommand {
-    SystemInfo,
+    System,
     Quit,
     Exit,
 

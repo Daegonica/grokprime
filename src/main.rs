@@ -1,36 +1,56 @@
 use grokprime_brain::prelude::*;
 use grokprime_brain::GrokConnection;
+use crossterm::{
+    event::{self, Event, KeyEventKind, KeyCode},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
+};
+use ratatui::prelude::*;
+use std::io::stdout;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let mut shadow = GrokConnection::new();
-    let mut user = UserInput::new();
+    enable_raw_mode()?;
+    stdout().execute(EnterAlternateScreen)?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    let mut app = ShadowApp::new();
 
-    println!("Shadow awaits your command... \n   (type 'quit' to exit)");
+    let mut shadow = GrokConnection::new();
+
+    app.add_message("Welcome");
 
     loop {
+        terminal.draw(|f| app.draw(f))?;
 
-        match user.read_user_input()? {
-            Some(raw_input) => {
-                match user.process_input(&raw_input) {
-                    InputAction::Quit => {
-                        println!("Shadow retreats into the darkness...");
-                        break;
-                    }
-
-                    InputAction::SendAsMessage(content) => todo!(),
-
-                    InputAction::ContinueNoSend(msg) => {
-                        println!("{}", msg);
-                        continue;
-                    }
-
-                    InputAction::DoNothing => {continue;}
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Press {
+                if key.code == KeyCode::Esc {
+                    break;
                 }
+                app.handle_key(key);
             }
-
-            None => continue,
         }
+        // match user.read_user_input()? {
+        //     Some(raw_input) => {
+        //         match user.process_input(&raw_input) {
+        //             InputAction::Quit => {
+        //                 println!("Shadow retreats into the darkness...");
+        //                 break;
+        //             }
+
+        //             InputAction::SendAsMessage(content) => todo!(),
+
+        //             InputAction::ContinueNoSend(msg) => {
+        //                 println!("{}", msg);
+        //                 continue;
+        //             }
+
+        //             InputAction::DoNothing => {continue;}
+        //         }
+        //     }
+
+        //     None => continue,
+        // }
 
 
         // match shadow.read_user_line()? {
@@ -49,6 +69,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         //     None => continue,
         // }
     }
+
+    disable_raw_mode()?;
+    stdout().execute(LeaveAlternateScreen)?;
+
     // let _ = save_history("conversation_history.json", &shadow.local_history);
 
     Ok(())
