@@ -1,5 +1,7 @@
 pub mod models;
 pub mod history;
+pub mod user_input;
+pub mod system_info;
 pub mod prelude;
 
 use crate::prelude::*;
@@ -20,6 +22,7 @@ impl GrokConnection {
         dotenv().ok();
         let api_key = env::var("GROK_KEY").expect("GROK_KEY not set");
 
+        // Make this a loadable personality set.
         let sys_messages = Message {
                 role: "system".to_string(),
                 content: r#"
@@ -82,31 +85,6 @@ impl GrokConnection {
             request,
             last_response_id: None,
             local_history,
-        }
-    }
-
-    pub fn read_user_line(&self) -> std::io::Result<Option<String>> {
-        print!("You: ");
-        io::stdout().flush()?;
-
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-
-        let trimmed = input.trim().to_string();
-        if trimmed.is_empty() {
-            Ok(None)
-        } else {
-            Ok(Some(trimmed))
-        }
-    }
-
-    pub fn process_input(&mut self, raw_input: &str) -> InputAction {
-        let lower = raw_input.to_lowercase();
-
-        match lower.as_str() {
-            "quit" | "exit" | "/q" => InputAction::Quit,
-
-            _ => InputAction::SendAsMessage(raw_input.to_string()),
         }
     }
 

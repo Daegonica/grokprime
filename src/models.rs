@@ -66,6 +66,7 @@ pub struct ApiErrorResponse {
 #[derive(Debug)]
 pub enum InputAction {
     Quit,
-    ContinueNoSend(&'static str),
+    DoNothing,
+    ContinueNoSend(String),
     SendAsMessage(String),
 }
