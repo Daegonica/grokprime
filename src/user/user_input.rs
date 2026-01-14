@@ -49,7 +49,7 @@ impl UserInput {
             },
             UserCommand::Quit | UserCommand::Exit => InputAction::Quit,
 
-            UserCommand::Unknown => InputAction::ContinueNoSend(raw_input.to_string()),
+            UserCommand::Unknown => InputAction::SendAsMessage(raw_input.to_string()),
         }
     }
 

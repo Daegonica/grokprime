@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use serde::{Serialize, Deserialize};
 
 // Response handling
 #[derive(Serialize, Debug, Deserialize, Clone)]

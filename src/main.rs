@@ -7,7 +7,7 @@ use crossterm::{
 };
 use std::sync::Arc;
 use ratatui::prelude::*;
-use std::io::{stdout, Write};
+use std::io::stdout;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -54,13 +54,23 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
                     if let Some(ref user_input) = app.user_input {
                         match user_input.process_input(&line) {
+                            
                             InputAction::Quit => break,
+
                             InputAction::SendAsMessage(content) => {
                                 app.add_message(format!("> {}", line));
+                                app.input.clear();
+                                app.input_scroll = 0;
+                                app.is_waiting = true;
+
+                                terminal.draw(|f| app.draw(f))?;
+
                                 shadow.add_user_message(&content);
                                 if let Err(e) = shadow.handle_response().await {
                                     app.add_message(format!("Error: {}", e));
                                 }
+
+                                app.is_waiting = false;
                             }
                             InputAction::DoNothing => {
                                 app.add_message(format!("> {}", line));
@@ -80,6 +90,8 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
     }
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
+    
+    let _ = shadow.save_history("conversation_history.json");
 
     Ok(())
 }
@@ -122,6 +134,8 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
             None => continue,
         }
     }
+    
+    let _ = shadow.save_history("conversation_history.json");
 
     Ok(())
 }

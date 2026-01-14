@@ -81,6 +81,12 @@ impl GrokConnection {
             local_history,
             output,
         }
+    }    
+    pub fn save_history(&self, path: &str) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string_pretty(&self.local_history)?;
+        std::fs::write(path, json)?;
+        self.output.display(format!("Saved history ({} messages)", self.local_history.len()));
+        Ok(())
     }
 
     pub fn add_user_message(&mut self, content: &str) {
