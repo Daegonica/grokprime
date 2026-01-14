@@ -107,8 +107,6 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     loop {
-        print!("Input: ");
-        io::stdout().flush()?;
 
         match user_input.read_user_input()? {
             Some(raw_input) => {
