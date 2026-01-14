@@ -8,6 +8,7 @@ use ratatui::{
     Frame,
 };
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 use crate::prelude::*;
 
 #[derive(Debug)]
@@ -16,7 +17,8 @@ pub struct ShadowApp {
     pub input: String,
     pub scroll: u16,
     pub max_history: usize,
-    pub user_input: UserInput,
+    pub user_input: Option<UserInput>,
+    pub pending_messages: Arc<Mutex<Vec<String>>>,
 }
 
 impl Default for ShadowApp {
@@ -26,7 +28,8 @@ impl Default for ShadowApp {
             input: String::new(),
             scroll: 0,
             max_history: 1000,
-            user_input: UserInput::new(),
+            user_input: None,
+            pending_messages: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -36,6 +39,22 @@ impl ShadowApp {
         Self::default()
     }
 
+    pub fn get_message_buffer(&self) -> Arc<Mutex<Vec<String>>> {
+        Arc::clone(&self.pending_messages)
+    }
+
+    pub fn flush_pending_messages(&mut self) {
+        let messages_to_add: Vec<String> = if let Ok(mut pending) = self.pending_messages.lock() {
+            pending.drain(..).collect()
+        } else {
+            Vec::new()
+        };
+
+        for msg in messages_to_add {
+            self.add_message(msg);
+        }
+    }
+    
     pub fn add_message(&mut self, msg: impl Into<String>) {
         let msg = msg.into();
         self.messages.push_back(msg);
@@ -64,18 +83,20 @@ impl ShadowApp {
             KeyCode::Enter => {
                 if !self.input.trim().is_empty() {
                     let line = self.input.trim().to_string();
-                    match self.user_input.process_input(&line) {
-                        InputAction::DoNothing => {
-                            // self.add_message(format!("> {}", line));
-                            self.input.clear();
-                        }
-                        InputAction::ContinueNoSend(msg) => {
-                            self.add_message(format!("> {}", msg));
-                            self.input.clear();
-                        }
-                        InputAction::Quit => todo!(),
-                        InputAction::SendAsMessage(_content) => todo!()
+                    if let Some(ref user_input) = self.user_input {
+                        match user_input.process_input(&line) {
+                            InputAction::DoNothing => {
+                                // self.add_message(format!("> {}", line));
+                                self.input.clear();
+                            }
+                            InputAction::ContinueNoSend(msg) => {
+                                self.add_message(format!("> {}", msg));
+                                self.input.clear();
+                            }
+                            InputAction::Quit => todo!(),
+                            InputAction::SendAsMessage(_content) => todo!()
 
+                        }
                     }
                     // self.add_message(format!("> {}", line));
                     // self.input.clear();

@@ -11,6 +11,8 @@ pub use dotenv::dotenv;
 
 
 pub use crate::models::*;
+pub use crate::outputs::*;
+pub use crate::cli::*;
 
 pub use crate::grok::history::*;
 pub use crate::grok::agent::*;

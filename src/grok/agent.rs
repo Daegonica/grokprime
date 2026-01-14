@@ -6,13 +6,13 @@ pub struct GrokConnection {
     request: ChatRequest,
     last_response_id: Option<String>,
     pub local_history: Vec<Message>,
-
+    output: SharedOutput,
 }
 
 
 impl GrokConnection {
 
-    pub fn new() -> Self {
+    pub fn new(output: SharedOutput) -> Self {
         dotenv().ok();
         let api_key = env::var("GROK_KEY").expect("GROK_KEY not set");
 
@@ -54,16 +54,16 @@ impl GrokConnection {
         if let Ok(content) = std::fs::read_to_string(path) {
             match serde_json::from_str::<Vec<Message>>(&content) {
                 Ok(loaded) if !loaded.is_empty() => {
-                    println!("[INFO] Loaded {} messages from history.", loaded.len());
+                    output.display(format!("[INFO] Loaded {} messages from history.", loaded.len()));
                     local_history = loaded;
 
                 }
                 _ => {
-                    eprintln!("[WARNING] History file invalid or empty -> starting fresh with system prompt.");
+                    output.display(format!("[WARNING] History file invalid or empty -> starting fresh with system prompt."));
                 }
             }
         } else {
-            println!("[INFO] No history file found -> starting fresh.");
+            output.display(format!("[INFO] No history file found -> starting fresh."));
         }
 
         let request = ChatRequest {
@@ -79,6 +79,7 @@ impl GrokConnection {
             request,
             last_response_id: None,
             local_history,
+            output,
         }
     }
 
@@ -121,38 +122,38 @@ impl GrokConnection {
                         if let Some(first_block) = first_msg.content.first() {
                             if first_block.type_ == "output_text" {
                                 let reply = first_block.text.trim().to_string();
-                                println!("Shadow: {}", reply);
+                                self.output.display(format!("Shadow: {}", reply));
                                 reply_opt = Some(reply);
                                 self.request.input.clear();
                             } else {
-                                println!("Unexpected content type: {}", first_block.type_);
+                                self.output.display(format!("Unexpected content type: {}", first_block.type_));
                             }
                         } else {
-                            println!("No content blocks in output message.");
+                            self.output.display(format!("No content blocks in output message."));
                         }
                     } else {
-                        println!("No output messages returned.");
+                        self.output.display(format!("No output messages returned."));
                     }
 
                     self.last_response_id = Some(res.id.clone());
                 }
 
                 Err(e) => {
-                    eprintln!("Failed to parse /v1/responses JSON: {}", e);
-                    eprintln!("Raw responses: {}", text);
+                    self.output.display(format!("Failed to parse /v1/responses JSON: {}", e));
+                    self.output.display(format!("Raw responses: {}", text));
                 }
             }
         } else {
             match serde_json::from_str::<ApiErrorResponse>(&text) {
                 Ok(error_body) => {
-                    eprintln!("API Error: {}", error_body.error.message);
+                    self.output.display(format!("API Error: {}", error_body.error.message));
                     if let Some(code) = error_body.error.code {
-                        eprintln!("Code: {}", code);
+                        self.output.display(format!("Code: {}", code));
                     }
                 }
                 Err(_) => {
-                    eprintln!("Request failed with status: {}", status);
-                    eprintln!("Raw response: {}", text);
+                    self.output.display(format!("Request failed with status: {}", status));
+                    self.output.display(format!("Raw response: {}", text));
                 }
             }
         }

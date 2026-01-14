@@ -2,16 +2,25 @@ use crate::prelude::*;
 use strum::{EnumString, IntoStaticStr, EnumIter};
 use std::str::FromStr;
 
-#[derive(Debug)]
 pub struct UserInput {
     os_info: OsInfo,
+    output: SharedOutput,
+}
+
+impl std::fmt::Debug for UserInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UserInput")
+            .field("os_info", &self.os_info)
+            .field("output", &"<OutputHandler>")
+            .finish()
+    }
 }
 
 impl UserInput {
 
-    pub fn new() -> Self {
+    pub fn new(output: SharedOutput) -> Self {
         let os_info = OsInfo::new();
-        UserInput{ os_info}
+        UserInput{ os_info, output}
     }
 
     pub fn read_user_input(&mut self) -> std::io::Result<Option<String>> {
@@ -34,7 +43,8 @@ impl UserInput {
 
         match cmd {
             UserCommand::System => {
-                let _output = self.os_info.display_all();
+                let output_text = self.os_info.display_all();
+                self.output.display(output_text);
                 InputAction::DoNothing
             },
             UserCommand::Quit | UserCommand::Exit => InputAction::Quit,

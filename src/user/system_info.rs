@@ -44,26 +44,29 @@ impl OsInfo {
         }
     }
 
-    pub fn display_name(&self) {
-        println!("OS Name: {}", self.name);
+    pub fn display_name(&self) -> String {
+        format!("OS Name: {}", self.name)
     }
 
-    pub fn display_version(&self) {
-        println!("OS Version: {}", self.version);
+    pub fn display_version(&self) -> String {
+        format!("OS Version: {}", self.version)
     }
 
-    pub fn display_kernel_version(&self) {
-        println!("Kernel Version: {}", self.kernel_version);
+    pub fn display_kernel_version(&self) -> String {
+        format!("Kernel Version: {}", self.kernel_version)
     }
 
-    pub fn display_host_name(&self) {
-        println!("Host Name: {}", self.host_name);
+    pub fn display_host_name(&self) -> String {
+        format!("Host Name: {}", self.host_name)
     }
 
-    pub fn display_all(&self) {
-        self.display_name();
-        self.display_version();
-        self.display_kernel_version();
-        self.display_host_name();
+    pub fn display_all(&self)  -> String {
+        format!(
+            "{}\n{}\n{}\n{}",
+            self.display_name(),
+            self.display_version(),
+            self.display_kernel_version(),
+            self.display_host_name(),
+        )
     }
 }
