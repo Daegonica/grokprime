@@ -39,7 +39,11 @@ impl UserInput {
     }
 
     pub fn process_input(&self, raw_input: &str) -> InputAction {
-        let cmd = UserCommand::from_str(raw_input).unwrap_or(UserCommand::Unknown);
+        let parts: Vec<&str> = raw_input.splitn(2, ' ').collect();
+        let potential_command = parts[0];
+        let remainder = if parts.len() > 1 { parts[1] } else { "" };
+
+        let cmd = UserCommand::from_str(potential_command).unwrap_or(UserCommand::Unknown);
 
         match cmd {
             UserCommand::System => {
@@ -48,6 +52,24 @@ impl UserInput {
                 InputAction::DoNothing
             },
             UserCommand::Quit | UserCommand::Exit => InputAction::Quit,
+
+            UserCommand::Tweet => {
+                if remainder.is_empty() {
+                    self.output.display("Usage: tweet <your message>".to_string());
+                    InputAction::DoNothing
+                } else {
+                    InputAction::PostTweet(remainder.to_string())
+                }
+            },
+
+            UserCommand::Draft => {
+                if remainder.is_empty() {
+                    self.output.display("Usage: draft <your idea>".to_string());
+                    InputAction::DoNothing
+                } else {
+                    InputAction::DraftTweet(remainder.to_string())
+                }
+            },
 
             UserCommand::Unknown => InputAction::SendAsMessage(raw_input.to_string()),
         }
@@ -62,6 +84,8 @@ enum UserCommand {
     System,
     Quit,
     Exit,
+    Tweet,
+    Draft,
 
     #[strum(disabled)]
     Unknown,

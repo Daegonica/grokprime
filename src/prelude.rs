@@ -16,6 +16,7 @@ pub use crate::models::*;
 
 pub use crate::outputs::{OutputHandler, SharedOutput, CliOutput, TuiOutput};
 pub use crate::cli::Args;
+pub use crate::twitter::*;
 
 pub use crate::grok::agent::GrokConnection;
 

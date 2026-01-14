@@ -69,4 +69,6 @@ pub enum InputAction {
     DoNothing,
     ContinueNoSend(String),
     SendAsMessage(String),
+    PostTweet(String),
+    DraftTweet(String),
 }

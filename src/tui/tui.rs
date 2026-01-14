@@ -109,7 +109,9 @@ impl ShadowApp {
                                 self.input.clear();
                             }
                             InputAction::Quit => todo!(),
-                            InputAction::SendAsMessage(_content) => todo!()
+                            InputAction::SendAsMessage(_content) => todo!(),
+                            InputAction::PostTweet(_content) => todo!(),
+                            InputAction::DraftTweet(_content) => todo!(),
 
                         }
                     }

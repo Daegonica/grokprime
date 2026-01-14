@@ -33,6 +33,7 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     let user_input = UserInput::new(Arc::clone(&output));
     let mut shadow = GrokConnection::new(Arc::clone(&output));
+    let twitter = TwitterConnection::new(Arc::clone(&output));
 
     app.user_input = Some(user_input);
     app.add_message("Welcome to Shadow (TUI Mode)");
@@ -72,6 +73,51 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
                                 app.is_waiting = false;
                             }
+                            InputAction::PostTweet(tweet_text) => {
+                                app.add_message(format!("> {}", line));
+                                app.input.clear();
+                                app.input_scroll = 0;
+                                app.is_waiting = true;
+
+                                terminal.draw(|f| app.draw(f))?;
+
+                                match twitter.post_tweet(&tweet_text).await {
+                                    Ok(_) => {
+                                        app.add_message("Tweet posted successfully!".to_string());
+                                    }
+                                    Err(e) => {
+                                        app.add_message(format!("Failed to post tweet: {}", e));
+                                    }
+                                }
+
+                                app.is_waiting = false;
+                            }
+                            InputAction::DraftTweet(idea) => {
+                                app.add_message(format!("> {}", line));
+                                app.input.clear();
+                                app.input_scroll = 0;
+                                app.is_waiting = true;
+
+                                terminal.draw(|f| app.draw(f))?;
+
+                                // Ask Shadow to generate a tweet
+                                let prompt = format!(
+                                    "Generate a tweet based on this idea: '{}'. \
+                                    Keep it under 280 characters. Return ONLY the tweet text, \
+                                    speak as me, but sprinkle in some fourth wall breaking of your own choosing.",
+                                    idea
+                                );
+                                
+                                shadow.add_user_message(&prompt);
+                                if let Err(e) = shadow.handle_response().await {
+                                    app.add_message(format!("Error: {}", e));
+                                    app.is_waiting = false;
+                                } else {
+                                    // Shadow's response is already displayed
+                                    app.add_message("Type 'tweet <approved text>' to post it.".to_string());
+                                    app.is_waiting = false;
+                                }
+                            }
                             InputAction::DoNothing => {
                                 app.add_message(format!("> {}", line));
                             }
@@ -101,6 +147,7 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut user_input = UserInput::new(Arc::clone(&output));
     let mut shadow = GrokConnection::new(Arc::clone(&output));
+    let twitter = TwitterConnection::new(Arc::clone(&output));
 
     println!("Welcome to Shadow (CLI Mode)");
     println!("Type 'quit' or 'exit' to leave");
@@ -119,6 +166,27 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
                         shadow.add_user_message(&content);
                         if let Err(e) = shadow.handle_response().await {
                             eprintln!("Error: {}", e);
+                        }
+                    }
+                    InputAction::PostTweet(tweet_text) => {
+                        match twitter.post_tweet(&tweet_text).await {
+                            Ok(_) => println!("✓ Tweet posted!"),
+                            Err(e) => eprintln!("✗ Failed: {}", e),
+                        }
+                    }
+                    InputAction::DraftTweet(idea) => {
+                        let prompt = format!(
+                            "Generate a tweet based on this idea: '{}'. \
+                            Keep it under 280 characters. Return ONLY the tweet text, \
+                            speak as me, but sprinkle in some fourth wall breaking of your own choosing.",
+                            idea
+                        );
+                        
+                        shadow.add_user_message(&prompt);
+                        if let Err(e) = shadow.handle_response().await {
+                            eprintln!("Error: {}", e);
+                        } else {
+                            println!("\nTo post, type: tweet <approved text>");
                         }
                     }
                     InputAction::ContinueNoSend(msg) => {
