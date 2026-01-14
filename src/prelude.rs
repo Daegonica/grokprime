@@ -11,7 +11,11 @@ pub use dotenv::dotenv;
 
 
 pub use crate::models::*;
-pub use crate::history::*;
-pub use crate::user_input::*;
-pub use crate::system_info::*;
-pub use crate::tui::*;
+
+pub use crate::grok::history::*;
+pub use crate::grok::agent::*;
+
+pub use crate::user::user_input::*;
+pub use crate::user::system_info::*;
+
+pub use crate::tui::tui::*;

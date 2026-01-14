@@ -1,5 +1,5 @@
 use ratatui::{
-    backend::Backend,
+    // backend::Backend,
     crossterm::event::{KeyCode, KeyEvent},
     layout::{Constraint, Direction, Layout, Position},
     style::{Color, Modifier, Style},
@@ -74,7 +74,7 @@ impl ShadowApp {
                             self.input.clear();
                         }
                         InputAction::Quit => todo!(),
-                        InputAction::SendAsMessage(content) => todo!()
+                        InputAction::SendAsMessage(_content) => todo!()
 
                     }
                     // self.add_message(format!("> {}", line));

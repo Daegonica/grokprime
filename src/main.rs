@@ -1,5 +1,4 @@
 use grokprime_brain::prelude::*;
-use grokprime_brain::GrokConnection;
 use crossterm::{
     event::{self, Event, KeyEventKind, KeyCode},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -15,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
     let mut app = ShadowApp::new();
 
-    let mut shadow = GrokConnection::new();
+    let _shadow = GrokConnection::new();
 
     app.add_message("Welcome");
 
