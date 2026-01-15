@@ -2,6 +2,7 @@ use crate::prelude::*;
 use strum::{EnumString, IntoStaticStr, EnumIter};
 use std::str::FromStr;
 
+#[derive(Clone)]
 pub struct UserInput {
     os_info: OsInfo,
     output: SharedOutput,
@@ -48,8 +49,7 @@ impl UserInput {
         match cmd {
             UserCommand::System => {
                 let output_text = self.os_info.display_all();
-                self.output.display(output_text);
-                InputAction::DoNothing
+                InputAction::ContinueNoSend(output_text)
             },
             UserCommand::Quit | UserCommand::Exit => InputAction::Quit,
 
@@ -70,6 +70,16 @@ impl UserInput {
                     InputAction::DraftTweet(remainder.to_string())
                 }
             },
+            UserCommand::New => {
+                if remainder.is_empty() {
+                    self.output.display("Usage: new <persona>".to_string());
+                    InputAction::DoNothing
+                } else {
+                    InputAction::NewAgent(remainder.to_string())
+                }
+            },
+            UserCommand::Close => InputAction::CloseAgent,
+            UserCommand::List => InputAction::ListAgents,
 
             UserCommand::Unknown => InputAction::SendAsMessage(raw_input.to_string()),
         }
@@ -86,6 +96,9 @@ enum UserCommand {
     Exit,
     Tweet,
     Draft,
+    New,
+    Close,
+    List,
 
     #[strum(disabled)]
     Unknown,

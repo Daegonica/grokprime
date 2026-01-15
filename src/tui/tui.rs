@@ -7,9 +7,136 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
     Frame,
 };
+use std::time::SystemTime;
 use std::collections::VecDeque;
+use uuid::Uuid;
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use crate::prelude::*;
+
+#[derive(Debug)]
+pub struct UnifiedMessage {
+    pub text: String,
+    pub source: MessageSource,
+    pub timestamp: SystemTime,
+}
+
+#[derive(Debug)]
+pub enum MessageSource {
+    Global,
+    Agent(String),
+}
+
+#[derive(Debug)]
+pub struct AgentPane {
+    pub id: Uuid,
+    pub persona_name: String,
+    pub messages: VecDeque<String>,
+    pub input: String,
+    pub scroll: u16,
+    pub max_history: usize,
+    pub is_waiting: bool,
+    pub input_scroll: usize,
+    pub input_max_lines: u16,
+    pub pending_messages: Arc<Mutex<Vec<String>>>,
+}
+
+impl AgentPane {
+    pub fn new(id: Uuid, persona_name: String) -> Self {
+         Self {
+            id,
+            persona_name,
+            messages: VecDeque::new(),
+            input: String::new(),
+            scroll: 0,
+            max_history: 1000,
+            is_waiting: false,
+            input_scroll: 0,
+            input_max_lines: 20,
+            pending_messages: Arc::new(Mutex::new(Vec::new())),
+         }
+    }
+
+    pub fn get_message_buffer(&self) -> Arc<Mutex<Vec<String>>> {
+        Arc::clone(&self.pending_messages)
+    }
+
+    pub fn flush_pending_messages(&mut self) {
+        let messages_to_add: Vec<String> = if let Ok(mut pending) = self.pending_messages.lock() {
+            pending.drain(..).collect()
+        } else {
+            Vec::new()
+        };
+        for msg in messages_to_add {
+            self.add_message(msg);
+        }
+    }
+
+    pub fn add_message(&mut self, msg: impl Into<String>) {
+        let msg = msg.into();
+        self.messages.push_back(msg.clone());
+        self.scroll_to_bottom();
+    }
+
+    pub fn scroll_to_bottom(&mut self) {
+        self.scroll = u16::MAX;
+    }
+
+    pub fn wrap_input_text(&self, width: usize) -> Vec<String> {
+        if self.input.is_empty() {
+            return vec![String::new()];
+        }
+
+        let mut lines = Vec::new();
+        let mut current_line = String::new();
+
+        for word in self.input.split_inclusive(|c: char| c.is_whitespace()) {
+            if word.contains('\n') {
+                let parts: Vec<&str> = word.split('\n').collect();
+                for (i, part) in parts.iter().enumerate() {
+                    if i > 0 {
+                        lines.push(current_line.clone());
+                        current_line.clear();
+                    }
+                    if !part.is_empty() {
+                        let test_len = current_line.len() + part.len();
+                        if test_len > width && !current_line.is_empty() {
+                            lines.push(current_line.clone());
+                            current_line = part.to_string();
+                        } else {
+                            current_line.push_str(part);
+                        }
+                    }
+                }
+                continue;
+            }
+
+            let test_len = current_line.len() + word.len();
+
+            if test_len > width && !current_line.is_empty() {
+                lines.push(current_line.trim_end().to_string());
+                current_line = word.to_string();
+            } else {
+                current_line.push_str(word);
+            }
+        }
+
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+
+        if lines.is_empty() {
+            vec![String::new()]
+        } else {
+            lines
+        }
+    }
+
+    pub fn scroll_input_to_bottom(&mut self) {
+        let wrapped = self.wrap_input_text(100);
+        self.input_scroll = wrapped.len().saturating_sub(self.input_max_lines as usize);
+    }
+}
 
 #[derive(Debug)]
 pub struct ShadowApp {
@@ -22,6 +149,10 @@ pub struct ShadowApp {
     pub is_waiting: bool,
     pub input_scroll: usize,
     pub input_max_lines: u16,
+    pub agents: HashMap<Uuid, AgentPane>,
+    pub agent_order: Vec<Uuid>,
+    pub current_agent: Option<Uuid>,
+    pub unified_messages: VecDeque<UnifiedMessage>,
 }
 
 impl Default for ShadowApp {
@@ -36,6 +167,10 @@ impl Default for ShadowApp {
             is_waiting: false,
             input_scroll: 0,
             input_max_lines: 20,
+            agents: HashMap::new(),
+            agent_order: Vec::new(),
+            current_agent: None,
+            unified_messages: VecDeque::new(),
         }
     }
 }
@@ -43,6 +178,40 @@ impl Default for ShadowApp {
 impl ShadowApp {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn add_agent(&mut self, id: Uuid, persona_name: String) {
+        let pane = AgentPane::new(id, persona_name);
+        self.agent_order.push(id);
+        self.current_agent = Some(id);
+        self.agents.insert(id, pane);
+    }
+
+    pub fn remove_agent(&mut self, id: Uuid) {
+        self.agents.remove(&id);
+        self.agent_order.retain(|&x| x != id);
+        if self.current_agent == Some(id) {
+            self.current_agent = self.agent_order.last().cloned();
+        }
+    }
+
+    pub fn switch_agent(&mut self, next: bool) {
+        if self.agent_order.is_empty() {return;}
+        if let Some(current) = self.current_agent {
+            let idx = self.agent_order.iter().position(|&x| x == current).unwrap_or(0);
+            let new_idx = if next {
+                (idx +1) % self.agent_order.len()
+            } else {
+                (idx + self.agent_order.len() -1) % self.agent_order.len()
+            };
+            self.current_agent = Some(self.agent_order[new_idx]);
+        } else {
+            self.current_agent = self.agent_order.first().cloned();
+        }
+    }
+
+    pub fn current_pane_mut(&mut self) -> Option<&mut AgentPane> {
+        self.current_agent.and_then(move |id| self.agents.get_mut(&id))
     }
 
     pub fn get_message_buffer(&self) -> Arc<Mutex<Vec<String>>> {
@@ -63,11 +232,13 @@ impl ShadowApp {
     
     pub fn add_message(&mut self, msg: impl Into<String>) {
         let msg = msg.into();
-        self.messages.push_back(msg);
-
-        while self.messages.len() > self.max_history {
-            self.messages.pop_front();
-        }
+        self.messages.push_back(msg.clone());
+        
+        self.unified_messages.push_back(UnifiedMessage {
+            text: msg,
+            source: MessageSource::Global,
+            timestamp: SystemTime::now(),
+        });
 
         self.scroll_to_bottom();
     }
@@ -83,6 +254,23 @@ impl ShadowApp {
 
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
         match key.code {
+            
+            KeyCode::Tab if !key.modifiers.contains(KeyModifiers::SHIFT) => {
+                self.switch_agent(true);
+                true
+            }
+
+            KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                self.switch_agent(false);
+                true
+            }
+
+            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                if let Some(id) = self.current_agent {
+                    self.remove_agent(id);
+                }
+                true
+            }
 
             // Input Text control
             KeyCode::Char(c) => {
@@ -98,22 +286,96 @@ impl ShadowApp {
             KeyCode::Enter => {
                 if !self.input.trim().is_empty() {
                     let line = self.input.trim().to_string();
-                    if let Some(ref user_input) = self.user_input {
-                        match user_input.process_input(&line) {
-                            InputAction::DoNothing => {
-                                // self.add_message(format!("> {}", line));
-                                self.input.clear();
-                            }
-                            InputAction::ContinueNoSend(msg) => {
-                                self.add_message(format!("> {}", msg));
-                                self.input.clear();
-                            }
-                            InputAction::Quit => todo!(),
-                            InputAction::SendAsMessage(_content) => todo!(),
-                            InputAction::PostTweet(_content) => todo!(),
-                            InputAction::DraftTweet(_content) => todo!(),
+                    let user_input = self.user_input.clone();
 
+                    if line == "status" {
+
+                        let mut status = String::new();
+                        status.push_str(&format!("Current agent: {}\n", self.current_agent
+                            .and_then(|id| self.agents.get(&id))
+                            .map(|pane| &pane.persona_name)
+                            .unwrap_or(&"<none>".to_string())));
+
+                        status.push_str(&format!(" - Current pane: {}\n", self.current_pane_mut()
+                        .map(|pane| &pane.persona_name)
+                        .unwrap_or(&"<none>".to_string())));
+
+                        status.push_str(" - All agents:\n");
+                        
+                        for id in &self.agent_order {
+                            let pane = &self.agents[id];
+                            let marker = if Some(*id) == self.current_agent {" ->"} else {" "};
+                            status.push_str(&format!("{} {}\n", marker, pane.persona_name));
                         }
+                        status.push_str(&format!(" - Total tabs: {}", self.agent_order.len()));
+
+                        if let Some(pane) = self.current_pane_mut() {
+                            pane.add_message(status);
+                        } else {
+                            self.add_message(status);
+                        }
+
+                        self.input.clear();
+                    }
+
+                    let mut agent_unified_message: Option<UnifiedMessage> = None;
+                    if let Some(pane) = self.current_pane_mut() {
+                        if let Some(user_input) = user_input {
+                            match user_input.process_input(&line) {
+                                InputAction::DoNothing => {
+                                    self.input.clear();
+                                }
+                                InputAction::ContinueNoSend(msg) => {
+                                    self.add_message(format!("> {}", msg));
+                                    self.input.clear();
+                                }
+                                InputAction::Quit => {
+                                    self.input.clear();
+                                    return false;
+                                },
+                                InputAction::SendAsMessage(content) => {
+                                    pane.add_message(format!("> {}", content));
+                                    self.input.clear();
+                                }
+                                InputAction::PostTweet(_content) => todo!(),
+                                InputAction::DraftTweet(_content) => todo!(),
+
+                                InputAction::NewAgent(persona) => {
+                                    let id = Uuid::new_v4();
+                                    self.add_agent(id, persona.clone());
+                                    self.current_agent = Some(id);
+                                    self.add_message(format!("Created new agent with persona '{}'", persona));
+                                    self.input.clear();
+                                }
+                                InputAction::CloseAgent => {
+                                    if let Some(id) = self.current_agent {
+                                        self.remove_agent(id);
+                                        self.add_message("Closed current agent.");
+                                    }
+                                    self.input.clear();
+                                }
+                                InputAction::ListAgents => {
+                                    let personas = vec!["shadow"];
+                                    self.add_message(format!("Available personas: {}", personas.join(", ")));
+                                    self.input.clear();
+                                }
+
+                            }
+                        } else {
+                            pane.add_message(format!("> {}", line));
+                            agent_unified_message = Some(UnifiedMessage {
+                                text: line.clone(),
+                                source: MessageSource::Agent(pane.persona_name.clone()),
+                                timestamp: SystemTime::now(),
+                            });
+                            self.input.clear();
+                        }
+                    } else {
+                        self.add_message("No agent available. Create one with 'new <persona>'");
+                        self.input.clear();
+                    }
+                    if let Some(msg) = agent_unified_message {
+                        self.unified_messages.push_back(msg);
                     }
                 }
                 true
@@ -148,7 +410,10 @@ impl ShadowApp {
                 self.scroll = self.scroll.saturating_add(10);
                 true
             }
-            _ => false,
+            KeyCode::Esc => {
+                return false;
+            }
+            _ => true,
         }
     }
 
@@ -184,16 +449,30 @@ impl ShadowApp {
         let message_area = chunks[0];
 
         let mut lines: Vec<Line> = Vec::new();
-        for msg in &self.messages {
-            let content = if msg.starts_with('>') {
+        for unified in &self.unified_messages {
+            let content = if unified.text.starts_with('>') {
                 Line::from(Span::styled(
-                    msg.clone(),
+                    unified.text.clone(),
                     Style::default().fg(Color::LightYellow).add_modifier(Modifier::BOLD),
                 ))
             } else {
-                Line::from(msg.clone())
+                Line::from(unified.text.clone())
             };
             lines.push(content);
+        }
+        
+        if let Some(pane) = self.current_pane_mut() {
+            for msg in &pane.messages {
+                let content = if msg.starts_with('>') {
+                    Line::from(Span::styled(
+                        msg.clone(),
+                        Style::default().fg(Color::LightYellow).add_modifier(Modifier::BOLD),
+                    ))
+                } else {
+                    Line::from(msg.clone())
+                };
+                lines.push(content);
+            }
         }
 
         let text = Text::from(lines.clone());
@@ -375,3 +654,4 @@ impl ShadowApp {
         }
     }
 }
+

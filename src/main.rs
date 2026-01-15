@@ -1,10 +1,11 @@
 use grokprime_brain::prelude::*;
 use clap::Parser;
 use crossterm::{
-    event::{self, Event, KeyEventKind, KeyCode},
+    event::{self, Event, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use uuid::Uuid;
 use std::sync::Arc;
 use ratatui::prelude::*;
 use std::io::stdout;
@@ -25,15 +26,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
+
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+
     let mut app = ShadowApp::new();
+    let default_persona = "shadow".to_string();
+    let default_id = Uuid::new_v4();
+    app.add_agent(default_id, default_persona);
+    app.current_agent = Some(default_id);
 
     let output_buffer = app.get_message_buffer();
     let output: SharedOutput = Arc::new(TuiOutput::new(output_buffer));
 
     let user_input = UserInput::new(Arc::clone(&output));
-    let mut shadow = GrokConnection::new(Arc::clone(&output));
-    let twitter = TwitterConnection::new(Arc::clone(&output));
+    let shadow = GrokConnection::new(Arc::clone(&output));
+    // let twitter = TwitterConnection::new(Arc::clone(&output));
 
     app.user_input = Some(user_input);
     app.add_message("Welcome to Shadow (TUI Mode)");
@@ -41,96 +48,16 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         app.flush_pending_messages();
-
         terminal.draw(|f| app.draw(f))?;
-
+    
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                if key.code == KeyCode::Esc {
+                let should_continue = app.handle_key(key);
+                if !should_continue {
                     break;
                 }
-
-                if key.code == KeyCode::Enter && !app.input.trim().is_empty() {
-                    let line = app.input.trim().to_string();
-
-                    if let Some(ref user_input) = app.user_input {
-                        match user_input.process_input(&line) {
-                            
-                            InputAction::Quit => break,
-
-                            InputAction::SendAsMessage(content) => {
-                                app.add_message(format!("> {}", line));
-                                app.input.clear();
-                                app.input_scroll = 0;
-                                app.is_waiting = true;
-
-                                terminal.draw(|f| app.draw(f))?;
-
-                                shadow.add_user_message(&content);
-                                if let Err(e) = shadow.handle_response().await {
-                                    app.add_message(format!("Error: {}", e));
-                                }
-
-                                app.is_waiting = false;
-                            }
-                            InputAction::PostTweet(tweet_text) => {
-                                app.add_message(format!("> {}", line));
-                                app.input.clear();
-                                app.input_scroll = 0;
-                                app.is_waiting = true;
-
-                                terminal.draw(|f| app.draw(f))?;
-
-                                match twitter.post_tweet(&tweet_text).await {
-                                    Ok(_) => {
-                                        app.add_message("Tweet posted successfully!".to_string());
-                                    }
-                                    Err(e) => {
-                                        app.add_message(format!("Failed to post tweet: {}", e));
-                                    }
-                                }
-
-                                app.is_waiting = false;
-                            }
-                            InputAction::DraftTweet(idea) => {
-                                app.add_message(format!("> {}", line));
-                                app.input.clear();
-                                app.input_scroll = 0;
-                                app.is_waiting = true;
-
-                                terminal.draw(|f| app.draw(f))?;
-
-                                // Ask Shadow to generate a tweet
-                                let prompt = format!(
-                                    "Generate a tweet based on this idea: '{}'. \
-                                    Keep it under 280 characters. Return ONLY the tweet text, \
-                                    speak as me, but sprinkle in some fourth wall breaking of your own choosing.",
-                                    idea
-                                );
-                                
-                                shadow.add_user_message(&prompt);
-                                if let Err(e) = shadow.handle_response().await {
-                                    app.add_message(format!("Error: {}", e));
-                                    app.is_waiting = false;
-                                } else {
-                                    // Shadow's response is already displayed
-                                    app.add_message("Type 'tweet <approved text>' to post it.".to_string());
-                                    app.is_waiting = false;
-                                }
-                            }
-                            InputAction::DoNothing => {
-                                app.add_message(format!("> {}", line));
-                            }
-                            InputAction::ContinueNoSend(msg) => {
-                                app.add_message(format!("> {}", msg));
-                                app.add_message(msg);
-                            }
-                        }
-                    }
-                    app.input.clear();
-                } else {
-                    app.handle_key(key);
-                }
+                app.flush_pending_messages();
+                terminal.draw(|f| app.draw(f))?;
             }
         }
     }
@@ -195,6 +122,7 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
                     InputAction::DoNothing => {
                         continue;
                     }
+                    InputAction::NewAgent(_) | InputAction::CloseAgent | InputAction::ListAgents => todo!(),
                 }
             }
             None => continue,
