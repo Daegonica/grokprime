@@ -1,3 +1,25 @@
+//! # Daegonica Module: main
+//!
+//! **Purpose:** Entry point for the GrokPrime-Brain application
+//!
+//! **Context:**
+//! - This is the main executable entry point that initializes and runs the application
+//! - Supports both TUI (Terminal User Interface) and CLI (Command Line Interface) modes
+//!
+//! **Responsibilities:**
+//! - Parse command-line arguments to determine run mode
+//! - Initialize and manage the application lifecycle
+//! - Set up terminal environments for TUI mode
+//! - Coordinate user input, Grok API connections, and output handlers
+//!
+//! **Author:** Daegonica Software
+//! **Version:** 0.1.0
+//! **Last Updated:** 2026-01-18
+//!
+//! ---------------------------------------------------------------
+//! This file is part of the Daegonica Software codebase.
+//! ---------------------------------------------------------------
+
 use grokprime_brain::prelude::*;
 use clap::Parser;
 use crossterm::{
@@ -10,6 +32,21 @@ use std::sync::Arc;
 use ratatui::prelude::*;
 use std::io::stdout;
 
+/// # main
+///
+/// **Purpose:**
+/// Application entry point that determines and executes the appropriate run mode.
+///
+/// **Parameters:**
+/// None (arguments parsed internally via clap)
+///
+/// **Returns:**
+/// `Result<(), Box<dyn std::error::Error>>` - Success or propagated error
+///
+/// **Errors / Failures:**
+/// - Terminal initialization failures in TUI mode
+/// - API connection errors
+/// - File I/O errors when saving history
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -23,6 +60,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// # run_tui_mode
+///
+/// **Purpose:**
+/// Initializes and runs the application in TUI (Terminal User Interface) mode with full
+/// interactive display, message history, and real-time updates.
+///
+/// **Parameters:**
+/// None
+///
+/// **Returns:**
+/// `Result<(), Box<dyn std::error::Error>>` - Success or propagated error
+///
+/// **Errors / Failures:**
+/// - Terminal raw mode enabling failures
+/// - Screen buffer initialization errors
+/// - Event handling errors during the main loop
+/// - History save failures on exit
+///
+/// **Examples:**
+/// ```rust
+/// // Called automatically when --tui flag is set (default)
+/// run_tui_mode().await?;
+/// ```
 async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
@@ -69,6 +129,29 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// # run_cli_mode
+///
+/// **Purpose:**
+/// Runs the application in CLI (Command Line Interface) mode with simple text-based
+/// input/output for scripting and automation scenarios.
+///
+/// **Parameters:**
+/// None
+///
+/// **Returns:**
+/// `Result<(), Box<dyn std::error::Error>>` - Success or propagated error
+///
+/// **Errors / Failures:**
+/// - Standard input reading failures
+/// - API communication errors
+/// - Twitter posting errors
+/// - History save failures on exit
+///
+/// **Examples:**
+/// ```rust
+/// // Called when --cli flag is specified
+/// run_cli_mode().await?;
+/// ```
 async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
     let output: SharedOutput = Arc::new(CliOutput);
 

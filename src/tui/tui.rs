@@ -1,3 +1,27 @@
+//! # Daegonica Module: tui::tui
+//!
+//! **Purpose:** Core TUI application state and rendering logic
+//!
+//! **Context:**
+//! - Main TUI implementation using ratatui framework
+//! - Manages multiple agent panes and message display
+//! - Handles user input and keyboard events
+//!
+//! **Responsibilities:**
+//! - Render TUI layout with message history and input areas
+//! - Handle keyboard input and commands
+//! - Manage multiple agent panes with tab switching
+//! - Display unified and per-agent message streams
+//! - Text wrapping and scrolling for messages and input
+//!
+//! **Author:** Daegonica Software
+//! **Version:** 0.1.0
+//! **Last Updated:** 2026-01-18
+//!
+//! ---------------------------------------------------------------
+//! This file is part of the Daegonica Software codebase.
+//! ---------------------------------------------------------------
+
 use ratatui::{
     // backend::Backend,
     crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
@@ -14,6 +38,24 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use crate::prelude::*;
 
+/// # UnifiedMessage
+///
+/// **Summary:**
+/// Represents a message with source tracking and timestamp for unified display.
+///
+/// **Fields:**
+/// - `text`: The message content
+/// - `source`: Where the message originated (Global or specific Agent)
+/// - `timestamp`: When the message was created
+///
+/// **Usage Example:**
+/// ```rust
+/// let msg = UnifiedMessage {
+///     text: "Hello".to_string(),
+///     source: MessageSource::Global,
+///     timestamp: SystemTime::now(),
+/// };
+/// ```
 #[derive(Debug)]
 pub struct UnifiedMessage {
     pub text: String,
@@ -21,12 +63,42 @@ pub struct UnifiedMessage {
     pub timestamp: SystemTime,
 }
 
+/// # MessageSource
+///
+/// **Summary:**
+/// Indicates where a message originated from in the TUI.
+///
+/// **Variants:**
+/// - `Global`: Message displayed globally across all panes
+/// - `Agent(String)`: Message from a specific agent with persona name
 #[derive(Debug)]
 pub enum MessageSource {
     Global,
     Agent(String),
 }
 
+/// # AgentPane
+///
+/// **Summary:**
+/// Represents an individual agent conversation pane in the TUI with its own state.
+///
+/// **Fields:**
+/// - `id`: Unique identifier for this agent pane
+/// - `persona_name`: The persona/agent name displayed in the UI
+/// - `messages`: Message history for this agent
+/// - `input`: Current input text for this agent
+/// - `scroll`: Vertical scroll position in message history
+/// - `max_history`: Maximum number of messages to retain
+/// - `is_waiting`: Whether the agent is waiting for a response
+/// - `input_scroll`: Vertical scroll position in input area
+/// - `input_max_lines`: Maximum visible lines in input area
+/// - `pending_messages`: Thread-safe buffer for messages from async operations
+///
+/// **Usage Example:**
+/// ```rust
+/// let pane = AgentPane::new(Uuid::new_v4(), "shadow".to_string());
+/// pane.add_message("Welcome!");
+/// ```
 #[derive(Debug)]
 pub struct AgentPane {
     pub id: Uuid,
@@ -42,6 +114,20 @@ pub struct AgentPane {
 }
 
 impl AgentPane {
+    /// # new
+    ///
+    /// **Purpose:**
+    /// Creates a new agent pane with the specified ID and persona name.
+    ///
+    /// **Parameters:**
+    /// - `id`: Unique identifier for this agent
+    /// - `persona_name`: Display name for the agent persona
+    ///
+    /// **Returns:**
+    /// Initialized AgentPane with default values
+    ///
+    /// **Errors / Failures:**
+    /// - None (infallible)
     pub fn new(id: Uuid, persona_name: String) -> Self {
          Self {
             id,
@@ -57,10 +143,27 @@ impl AgentPane {
          }
     }
 
+    /// # get_message_buffer
+    ///
+    /// **Purpose:**
+    /// Returns a clone of the shared message buffer for async message accumulation.
+    ///
+    /// **Returns:**
+    /// Arc-wrapped Mutex-protected vector of pending messages
     pub fn get_message_buffer(&self) -> Arc<Mutex<Vec<String>>> {
         Arc::clone(&self.pending_messages)
     }
 
+    /// # flush_pending_messages
+    ///
+    /// **Purpose:**
+    /// Moves all pending messages from the buffer into the main message history.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// None (mutates internal state)
     pub fn flush_pending_messages(&mut self) {
         let messages_to_add: Vec<String> = if let Ok(mut pending) = self.pending_messages.lock() {
             pending.drain(..).collect()
@@ -72,16 +175,49 @@ impl AgentPane {
         }
     }
 
+    /// # add_message
+    ///
+    /// **Purpose:**
+    /// Adds a message to this agent's message history and scrolls to bottom.
+    ///
+    /// **Parameters:**
+    /// - `msg`: The message content (anything that converts to String)
+    ///
+    /// **Returns:**
+    /// None (mutates internal state)
     pub fn add_message(&mut self, msg: impl Into<String>) {
         let msg = msg.into();
         self.messages.push_back(msg.clone());
         self.scroll_to_bottom();
     }
 
+    /// # scroll_to_bottom
+    ///
+    /// **Purpose:**
+    /// Sets scroll position to maximum to show the most recent messages.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// None (mutates scroll state)
     pub fn scroll_to_bottom(&mut self) {
         self.scroll = u16::MAX;
     }
 
+    /// # wrap_input_text
+    ///
+    /// **Purpose:**
+    /// Wraps the current input text to fit within the specified width.
+    ///
+    /// **Parameters:**
+    /// - `width`: Maximum line width in characters
+    ///
+    /// **Returns:**
+    /// Vector of wrapped lines
+    ///
+    /// **Errors / Failures:**
+    /// - None (infallible)
     pub fn wrap_input_text(&self, width: usize) -> Vec<String> {
         if self.input.is_empty() {
             return vec![String::new()];
@@ -132,12 +268,47 @@ impl AgentPane {
         }
     }
 
+    /// # scroll_input_to_bottom
+    ///
+    /// **Purpose:**
+    /// Adjusts input scroll position to show the last lines of wrapped input text.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// None (mutates input_scroll state)
     pub fn scroll_input_to_bottom(&mut self) {
         let wrapped = self.wrap_input_text(100);
         self.input_scroll = wrapped.len().saturating_sub(self.input_max_lines as usize);
     }
 }
 
+/// # ShadowApp
+///
+/// **Summary:**
+/// Main TUI application state managing multiple agent panes and global messages.
+///
+/// **Fields:**
+/// - `messages`: Global message history displayed across all panes
+/// - `input`: Current input text in the active pane
+/// - `scroll`: Global scroll position
+/// - `max_history`: Maximum messages to retain in history
+/// - `user_input`: Optional user input handler
+/// - `pending_messages`: Thread-safe buffer for async message accumulation
+/// - `is_waiting`: Whether the app is waiting for a response
+/// - `input_scroll`: Scroll position in input area
+/// - `input_max_lines`: Maximum visible lines in input
+/// - `agents`: Map of agent IDs to their panes
+/// - `agent_order`: Ordered list of agent IDs for tab switching
+/// - `current_agent`: Currently selected agent ID
+/// - `unified_messages`: All messages with source tracking
+///
+/// **Usage Example:**
+/// ```rust
+/// let mut app = ShadowApp::new();
+/// app.add_agent(Uuid::new_v4(), "shadow".to_string());
+/// ```
 #[derive(Debug)]
 pub struct ShadowApp {
     pub messages: VecDeque<String>,
@@ -176,10 +347,34 @@ impl Default for ShadowApp {
 }
 
 impl ShadowApp {
+    /// # new
+    ///
+    /// **Purpose:**
+    /// Creates a new ShadowApp instance with default values.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// Initialized ShadowApp
+    ///
+    /// **Errors / Failures:**
+    /// - None (infallible)
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// # add_agent
+    ///
+    /// **Purpose:**
+    /// Adds a new agent pane to the application and makes it the current agent.
+    ///
+    /// **Parameters:**
+    /// - `id`: Unique identifier for the new agent
+    /// - `persona_name`: Display name for the agent persona
+    ///
+    /// **Returns:**
+    /// None (mutates internal state)
     pub fn add_agent(&mut self, id: Uuid, persona_name: String) {
         let pane = AgentPane::new(id, persona_name);
         self.agent_order.push(id);
@@ -187,6 +382,16 @@ impl ShadowApp {
         self.agents.insert(id, pane);
     }
 
+    /// # remove_agent
+    ///
+    /// **Purpose:**
+    /// Removes an agent pane from the application and adjusts the current selection.
+    ///
+    /// **Parameters:**
+    /// - `id`: The agent ID to remove
+    ///
+    /// **Returns:**
+    /// None (mutates internal state)
     pub fn remove_agent(&mut self, id: Uuid) {
         self.agents.remove(&id);
         self.agent_order.retain(|&x| x != id);
@@ -195,6 +400,16 @@ impl ShadowApp {
         }
     }
 
+    /// # switch_agent
+    ///
+    /// **Purpose:**
+    /// Switches to the next or previous agent in the tab order.
+    ///
+    /// **Parameters:**
+    /// - `next`: true for next agent, false for previous
+    ///
+    /// **Returns:**
+    /// None (mutates current_agent)
     pub fn switch_agent(&mut self, next: bool) {
         if self.agent_order.is_empty() {return;}
         if let Some(current) = self.current_agent {
@@ -210,14 +425,38 @@ impl ShadowApp {
         }
     }
 
+    /// # current_pane_mut
+    ///
+    /// **Purpose:**
+    /// Returns a mutable reference to the currently selected agent pane.
+    ///
+    /// **Returns:**
+    /// Option containing mutable reference to AgentPane, or None if no current agent
     pub fn current_pane_mut(&mut self) -> Option<&mut AgentPane> {
         self.current_agent.and_then(move |id| self.agents.get_mut(&id))
     }
 
+    /// # get_message_buffer
+    ///
+    /// **Purpose:**
+    /// Returns a clone of the global message buffer for async message accumulation.
+    ///
+    /// **Returns:**
+    /// Arc-wrapped Mutex-protected vector of pending messages
     pub fn get_message_buffer(&self) -> Arc<Mutex<Vec<String>>> {
         Arc::clone(&self.pending_messages)
     }
 
+    /// # flush_pending_messages
+    ///
+    /// **Purpose:**
+    /// Moves all pending global messages from the buffer into the main message history.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// None (mutates internal state)
     pub fn flush_pending_messages(&mut self) {
         let messages_to_add: Vec<String> = if let Ok(mut pending) = self.pending_messages.lock() {
             pending.drain(..).collect()
@@ -230,6 +469,16 @@ impl ShadowApp {
         }
     }
     
+    /// # add_message
+    ///
+    /// **Purpose:**
+    /// Adds a global message to both the legacy and unified message queues.
+    ///
+    /// **Parameters:**
+    /// - `msg`: The message content (anything that converts to String)
+    ///
+    /// **Returns:**
+    /// None (mutates internal state)
     pub fn add_message(&mut self, msg: impl Into<String>) {
         let msg = msg.into();
         self.messages.push_back(msg.clone());
@@ -243,6 +492,16 @@ impl ShadowApp {
         self.scroll_to_bottom();
     }
 
+    /// # scroll_to_bottom
+    ///
+    /// **Purpose:**
+    /// Sets global scroll position to maximum to show the most recent messages.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// None (mutates scroll state)
     pub fn scroll_to_bottom(&mut self) {
         self.scroll = u16::MAX;
     }
@@ -252,6 +511,25 @@ impl ShadowApp {
         self.input_scroll = wrapped.len().saturating_sub(self.input_max_lines as usize);
     }
 
+    /// # handle_key
+    ///
+    /// **Purpose:**
+    /// Processes keyboard input events and updates application state accordingly.
+    ///
+    /// **Parameters:**
+    /// - `key`: The keyboard event to process
+    ///
+    /// **Returns:**
+    /// `bool` - true to continue running, false to exit
+    ///
+    /// **Errors / Failures:**
+    /// - None (infallible)
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// let should_continue = app.handle_key(key);
+    /// if !should_continue { break; }
+    /// ```
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
         match key.code {
             
@@ -604,6 +882,16 @@ impl ShadowApp {
         }
     }
 
+    /// # wrap_input_text
+    ///
+    /// **Purpose:**
+    /// Wraps the current input text to fit within the specified width (internal helper).
+    ///
+    /// **Parameters:**
+    /// - `width`: Maximum line width in characters
+    ///
+    /// **Returns:**
+    /// Vector of wrapped lines
     fn wrap_input_text(&self, width: usize) -> Vec<String> {
         if self.input.is_empty() {
             return vec![String::new()];

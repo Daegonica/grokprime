@@ -1,3 +1,25 @@
+//! # Daegonica Module: prelude
+//!
+//! **Purpose:** Centralized import prelude for common types and traits
+//!
+//! **Context:**
+//! - Used throughout the codebase via `use crate::prelude::*`
+//! - Reduces boilerplate imports across modules
+//!
+//! **Responsibilities:**
+//! - Re-export commonly used external crate types and traits
+//! - Re-export internal types and modules for convenience
+//! - Provide a single import point for frequently used items
+//! - Does NOT implement new functionality
+//!
+//! **Author:** Daegonica Software
+//! **Version:** 0.1.0
+//! **Last Updated:** 2026-01-18
+//!
+//! ---------------------------------------------------------------
+//! This file is part of the Daegonica Software codebase.
+//! ---------------------------------------------------------------
+
 pub use reqwest::Client;
 pub use serde::{Deserialize, Serialize};
 pub use serde_json;
@@ -14,8 +36,14 @@ pub use std::path::{Path, PathBuf};
 
 pub use crate::models::*;
 
-pub use crate::outputs::{OutputHandler, SharedOutput, CliOutput, TuiOutput};
-pub use crate::cli::Args;
+pub use crate::utilities::outputs::{
+    OutputHandler, 
+    SharedOutput, 
+    CliOutput, 
+    TuiOutput
+};
+pub use crate::utilities::cli::Args;
+
 pub use crate::twitter::*;
 
 pub use crate::grok::agent::GrokConnection;

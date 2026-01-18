@@ -1,14 +1,14 @@
-//! # Daegonica Module: tui
+//! # Daegonica Module: utilities
 //!
-//! **Purpose:** Terminal User Interface implementation
+//! **Purpose:** Common utilities and helper modules
 //!
 //! **Context:**
-//! - Provides interactive TUI mode for the application
-//! - Uses ratatui for rendering and crossterm for event handling
+//! - Provides output abstraction for TUI and CLI modes
+//! - Handles command-line argument parsing
 //!
 //! **Responsibilities:**
-//! - Expose TUI components
-//! - Does NOT contain implementation (module declaration only)
+//! - Expose CLI and output modules
+//! - Re-export commonly used types
 //!
 //! **Author:** Daegonica Software
 //! **Version:** 0.1.0
@@ -18,4 +18,8 @@
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
 
-pub mod tui;
+pub mod cli;
+pub mod outputs;
+
+pub use cli::*;
+pub use outputs::*;
