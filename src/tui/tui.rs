@@ -30,6 +30,7 @@ use ratatui::{
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
     Frame,
+    prelude::Rect,
 };
 use std::time::SystemTime;
 use std::collections::VecDeque;
@@ -714,18 +715,8 @@ impl ShadowApp {
         (lines_needed.min(self.input_max_lines as usize) as u16) + 2
     }
 
-    pub fn draw(&mut self, frame: &mut Frame<'_>) {
-        let input_height = self.calculate_input_height(frame.area().width);
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Min(0),
-                Constraint::Length(input_height),
-            ])
-            .split(frame.area());
-
-        let message_area = chunks[0];
-
+    // Need to take out all the basic code that can be turned into functions for easier reading.
+    fn unified_messages(&self) -> Vec<Line<'_>> {
         let mut lines: Vec<Line> = Vec::new();
         for unified in &self.unified_messages {
             let content = if unified.text.starts_with('>') {
@@ -738,8 +729,16 @@ impl ShadowApp {
             };
             lines.push(content);
         }
-        
-        if let Some(pane) = self.current_pane_mut() {
+        lines
+    }
+
+    fn current_pane(&self) -> Option<&AgentPane> {
+        self.current_agent.and_then(|id| self.agents.get(&id))
+    }
+
+    fn pan_messages(&self) -> Vec<Line<'_>> {
+        let mut lines: Vec<Line> = Vec::new();
+        if let Some(pane) = self.current_pane() {
             for msg in &pane.messages {
                 let content = if msg.starts_with('>') {
                     Line::from(Span::styled(
@@ -752,53 +751,59 @@ impl ShadowApp {
                 lines.push(content);
             }
         }
+        lines
+    }
 
-        let text = Text::from(lines.clone());
 
-        let content_height = lines.len() as u16;
-        let visible_height = message_area.height.saturating_sub(2);
+    pub fn draw(&mut self, frame: &mut Frame<'_>) {
 
-        let max_scroll = content_height.saturating_sub(visible_height);
+        let input_height = self.calculate_input_height(frame.area().width);
 
-        self.scroll = self.scroll.min(max_scroll);
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Min(0),
+                Constraint::Length(input_height),
+            ])
+            .split(frame.area());
+        let message_area = chunks[0];
+        let split = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(70),
+                Constraint::Percentage(30),
+            ])
+            .split(message_area);
 
-        if self.scroll == u16::MAX || self.scroll > max_scroll {
-            self.scroll = max_scroll;
+        // Gather messages from each pane and unified messages
+        let pane_lines = self.pan_messages();
+        let unified_lines = self.unified_messages();
+        let mut global_scroll = self.scroll;
+        let mut agent_scroll = self.current_pane()
+                .map(|p| p.scroll)
+                .unwrap_or(0);
+
+        render_message_section(
+            frame,
+            split[1],
+            unified_lines,
+            "Global",
+            &mut global_scroll,
+        );
+
+        render_message_section(
+            frame,
+            split[0],
+            pane_lines,
+            "Agent",
+            &mut agent_scroll,
+        );
+
+        if let Some(pane) = self.current_pane_mut() {
+            pane.scroll = agent_scroll;
         }
 
-        let paragraph = Paragraph::new(text)
-            .block(
-                Block::default()
-                    .title(" Shadow ")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Rgb(255, 140, 0)))
-                    .title_style(Style::default().fg(Color::Rgb(255, 165, 0)).add_modifier(Modifier::BOLD)),
-            )
-            .wrap(Wrap { trim: true })
-            .scroll((self.scroll, 0));
-
-        frame.render_widget(paragraph, message_area);
-
-        let content_len = content_height as usize;
-        let viewport_len = visible_height as usize;
-
-        let mut scrollbar_state = ScrollbarState::default()
-            .content_length(content_len)
-            .viewport_content_length(viewport_len)
-            .position(self.scroll as usize);
-
-        let scrollbar = Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(Some("↑"))
-            .end_symbol(Some("↓"))
-            .track_symbol(Some("│"))
-            .thumb_symbol("█");
-
-        frame.render_stateful_widget(scrollbar, message_area, &mut scrollbar_state);
-
-        let max_scroll = content_len.saturating_sub(viewport_len);
-        self.scroll = (self.scroll as usize).min(max_scroll) as u16;
-
+        // Setup input area
         let input_area = chunks[1];
 
         let input_text = if self.is_waiting {
@@ -942,4 +947,52 @@ impl ShadowApp {
         }
     }
 }
+fn render_message_section(
+    frame: &mut Frame,
+    area: Rect,
+    lines: Vec<Line>,
+    title: &str,
+    scroll: &mut u16,
+) {
+    // Calculate content height and visible height
+    let content_height = lines.len() as u16;
+    let visible_height = area.height.saturating_sub(2);
+    let content_len = content_height as usize;
+    let viewport_len = visible_height as usize;
 
+    // Set scroll within bounds
+    let mut max_scroll = content_height.saturating_sub(visible_height);
+    *scroll = *scroll.min(&mut max_scroll);
+    if *scroll == u16::MAX || *scroll > max_scroll {
+        *scroll = max_scroll;
+    }
+    let mut scrollbar_state = ScrollbarState::default()
+        .content_length(content_len)
+        .viewport_content_length(viewport_len)
+        .position(*scroll as usize);
+    let scrollbar = Scrollbar::default()
+        .orientation(ScrollbarOrientation::VerticalRight)
+        .begin_symbol(Some("↑"))
+        .end_symbol(Some("↓"))
+        .track_symbol(Some("│"))
+        .thumb_symbol("█");
+
+    // Add all messages to 1 'text' for display
+    let text = Text::from(lines.clone());
+    // Set border and title styles
+    let paragraph = Paragraph::new(text)
+        .block(
+            Block::default()
+                .title(title)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Rgb(255, 140, 0)))
+                .title_style(Style::default().fg(Color::Rgb(255, 165, 0)).add_modifier(Modifier::BOLD)),
+        )
+        .wrap(Wrap { trim: true })
+        .scroll((*scroll, 0));
+
+    // Render message area
+    frame.render_widget(paragraph, area);
+    // Add scrollbar to message area
+    frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
+}
