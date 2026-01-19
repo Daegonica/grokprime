@@ -35,6 +35,7 @@ pub use std::path::{Path, PathBuf};
 
 
 pub use crate::models::*;
+pub use crate::capitalize_first;
 
 pub use crate::utilities::outputs::{
     OutputHandler, 
@@ -45,6 +46,7 @@ pub use crate::utilities::outputs::{
 pub use crate::utilities::cli::Args;
 
 pub use crate::twitter::*;
+pub use crate::persona::{Persona, PersonaRef};
 
 pub use crate::grok::agent::GrokConnection;
 

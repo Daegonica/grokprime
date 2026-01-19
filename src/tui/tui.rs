@@ -321,6 +321,7 @@ pub struct ShadowApp {
     pub is_waiting: bool,
     pub input_scroll: usize,
     pub input_max_lines: u16,
+    pub personas: HashMap<String, PersonaRef>,
     pub agents: HashMap<Uuid, AgentPane>,
     pub agent_order: Vec<Uuid>,
     pub current_agent: Option<Uuid>,
@@ -339,6 +340,7 @@ impl Default for ShadowApp {
             is_waiting: false,
             input_scroll: 0,
             input_max_lines: 20,
+            personas: HashMap::new(),
             agents: HashMap::new(),
             agent_order: Vec::new(),
             current_agent: None,
@@ -365,6 +367,14 @@ impl ShadowApp {
         Self::default()
     }
 
+    pub fn load_personas(&mut self, persona_paths: Vec<&Path>) -> anyhow::Result<()> {
+        for path in persona_paths {
+            let persona = Persona::from_yaml_file(path)?;
+            self.personas.insert(persona.name.clone(), Arc::new(persona));
+        }
+        Ok(())
+    }
+
     /// # add_agent
     ///
     /// **Purpose:**
@@ -381,6 +391,11 @@ impl ShadowApp {
         self.agent_order.push(id);
         self.current_agent = Some(id);
         self.agents.insert(id, pane);
+    }
+    fn get_agent_name(&self, id: Uuid) -> String {
+        self.agents.get(&id)
+            .map(|pane| pane.persona_name.clone())
+            .unwrap_or("<unknown>".to_string())
     }
 
     /// # remove_agent
@@ -609,19 +624,19 @@ impl ShadowApp {
         let mut status = String::new();
         status.push_str(&format!("Current agent: {}\n", self.current_agent
             .and_then(|id| self.agents.get(&id))
-            .map(|pane| &pane.persona_name)
-            .unwrap_or(&"<none>".to_string())));
+            .map(|pane| capitalize_first(&pane.persona_name))
+            .unwrap_or("<none>".to_string())));
 
         status.push_str(&format!(" - Current pane: {}\n", self.current_pane_mut()
-        .map(|pane| &pane.persona_name)
-        .unwrap_or(&"<none>".to_string())));
+        .map(|pane| capitalize_first(&pane.persona_name))
+        .unwrap_or("<none>".to_string())));
 
         status.push_str(" - All agents:\n");
         
         for id in &self.agent_order {
             let pane = &self.agents[id];
             let marker = if Some(*id) == self.current_agent {" ->"} else {" "};
-            status.push_str(&format!("{} {}\n", marker, pane.persona_name));
+            status.push_str(&format!("{} {}\n", marker, capitalize_first(&pane.persona_name)));
         }
         status.push_str(&format!(" - Total tabs: {}", self.agent_order.len()));
 
@@ -662,10 +677,15 @@ impl ShadowApp {
                         },
 
                         InputAction::NewAgent(persona) => {
-                            let id = Uuid::new_v4();
-                            self.add_agent(id, persona.clone());
-                            self.current_agent = Some(id);
-                            self.add_message(format!("Created new agent with persona '{}'", persona));
+                            
+                            if !self.personas.contains_key(&persona) {
+                                self.add_message(format!("Persona '{}' not found.", capitalize_first(&persona)));
+                            } else {
+                                let id = Uuid::new_v4();
+                                self.add_agent(id, persona.clone());
+                                self.current_agent = Some(id);
+                                self.add_message(format!("Created new agent with persona '{}'", capitalize_first(&persona)));
+                        }
                             self.input.clear();
                         }
                         InputAction::CloseAgent => {
@@ -844,15 +864,19 @@ impl ShadowApp {
             frame,
             split[1],
             unified_lines,
-            "Global",
+            &capitalize_first("System"),
             &mut global_scroll,
         );
 
+        let agent_name = self.get_agent_name(
+            self.current_agent
+                .unwrap_or(Uuid::nil())
+        );
         render_message_section(
             frame,
             split[0],
             pane_lines,
-            "Agent",
+            &capitalize_first(&agent_name),
             &mut agent_scroll,
         );
 
@@ -963,7 +987,7 @@ fn render_message_section(
     frame: &mut Frame,
     area: Rect,
     lines: Vec<Line>,
-    title: &str,
+    title: &String,
     scroll: &mut u16,
 ) {
     // Calculate content height and visible height
@@ -995,7 +1019,7 @@ fn render_message_section(
     let paragraph = Paragraph::new(text)
         .block(
             Block::default()
-                .title(title)
+                .title(title.as_str())
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Rgb(255, 140, 0)))
                 .title_style(Style::default().fg(Color::Rgb(255, 165, 0)).add_modifier(Modifier::BOLD)),

@@ -95,7 +95,9 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     // TUI setup
     let mut app = ShadowApp::new();
+    let persona_paths: Vec<&Path> = vec![Path::new("personas/shadow.yaml"), Path::new("personas/friday.yaml")];
 
+    app.load_personas(persona_paths).expect("Failed to load personas");
     app.add_agent(default_id, default_persona);
     app.current_agent = Some(default_id);
 

@@ -134,6 +134,7 @@ impl GrokConnection {
             input: local_history.clone(),
             temperature: 0.7,
             previous_response_id: None,
+            stream: true,
         };
 
         GrokConnection{
