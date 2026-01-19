@@ -754,6 +754,54 @@ impl ShadowApp {
         lines
     }
 
+    fn render_input(&self, frame: &mut Frame<'_>, area: Rect) {
+        let input_text = if self.is_waiting {
+            Text::from(vec![
+                Line::from(vec![
+                    Span::styled(" > ", Style::default().fg(Color::Rgb(255, 140, 0)).add_modifier(Modifier::BOLD)),
+                    Span::styled("Shadow is thinking...", Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
+                ])
+            ])
+        } else {
+            let available_width = area.width.saturating_sub(6) as usize;
+
+            let wrapped_lines = self.wrap_input_text(available_width);
+            let total_lines = wrapped_lines.len();
+
+            let max_visible = (area.height.saturating_sub(2)) as usize;
+            let scroll_offset = self.input_scroll.min(total_lines.saturating_sub(max_visible));
+
+            let visible_lines: Vec<Line> = wrapped_lines
+                .iter()
+                .skip(scroll_offset)
+                .take(max_visible)
+                .enumerate()
+                .map(|(idx, line)| {
+                    if idx == 0 {
+                        Line::from(vec![
+                            Span::styled(" > ", Style::default().fg(Color::Rgb(255, 140, 0))),
+                            Span::raw(line.to_string()),
+                        ])
+                    } else {
+                        Line::from(format!("   {}", line))
+                    }
+                })
+                .collect();
+
+            Text::from(visible_lines)
+        };
+
+        let input_widget = Paragraph::new(input_text)
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Rgb(255, 140, 0)))
+                    .title(" Input "),
+            )
+            .style(Style::default().fg(Color::White));
+
+        frame.render_widget(input_widget, area);
+    }
 
     pub fn draw(&mut self, frame: &mut Frame<'_>) {
 
@@ -806,52 +854,7 @@ impl ShadowApp {
         // Setup input area
         let input_area = chunks[1];
 
-        let input_text = if self.is_waiting {
-            Text::from(vec![
-                Line::from(vec![
-                    Span::styled(" > ", Style::default().fg(Color::Rgb(255, 140, 0)).add_modifier(Modifier::BOLD)),
-                    Span::styled("Shadow is thinking...", Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
-                ])
-            ])
-        } else {
-            let available_width = input_area.width.saturating_sub(6) as usize;
-
-            let wrapped_lines = self.wrap_input_text(available_width);
-            let total_lines = wrapped_lines.len();
-
-            let max_visible = (input_area.height.saturating_sub(2)) as usize;
-            let scroll_offset = self.input_scroll.min(total_lines.saturating_sub(max_visible));
-
-            let visible_lines: Vec<Line> = wrapped_lines
-                .iter()
-                .skip(scroll_offset)
-                .take(max_visible)
-                .enumerate()
-                .map(|(idx, line)| {
-                    if idx == 0 {
-                        Line::from(vec![
-                            Span::styled(" > ", Style::default().fg(Color::Rgb(255, 140, 0))),
-                            Span::raw(line.to_string()),
-                        ])
-                    } else {
-                        Line::from(format!("   {}", line))
-                    }
-                })
-                .collect();
-
-            Text::from(visible_lines)
-        };
-
-        let input_widget = Paragraph::new(input_text)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Rgb(255, 140, 0)))
-                    .title(" Input "),
-            )
-            .style(Style::default().fg(Color::White));
-
-        frame.render_widget(input_widget, input_area);
+        self.render_input(frame, input_area);
 
 
         if input_area.height > 2 && input_area.width > 6 && !self.is_waiting {
