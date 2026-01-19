@@ -110,7 +110,10 @@ pub struct CompletedChunk {
 #[derive(Debug, Clone)]
 pub enum StreamChunk {
     Delta(String),
-    Complete(String),
+    Complete{
+        response_id: String,
+        full_reply: String,
+    },
     Error(String),
 }
 

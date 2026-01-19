@@ -95,18 +95,24 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
-    let default_persona = "shadow".to_string();
-    let default_id = Uuid::new_v4();
-
     // TUI setup
     log_info!("Setting up TUI application");
     let mut app = ShadowApp::new();
-    let persona_paths: Vec<&Path> = vec![Path::new("personas/shadow.yaml"), Path::new("personas/friday.yaml")];
+    let persona_paths: Vec<&Path> = vec![
+        Path::new("personas/shadow/shadow.yaml"), 
+        Path::new("personas/friday/friday.yaml")
+        ];
     
     log_info!("Adding personas from paths: {:?}", persona_paths);
     app.load_personas(persona_paths).expect("Failed to load personas");
-    app.add_agent(default_id, default_persona);
-    app.current_agent = Some(default_id);
+    if let Some(persona_ref) = app.personas.get("shadow") {
+        let id = Uuid::new_v4();
+        app.add_agent(id, Arc::clone(persona_ref));
+        app.current_agent = Some(id);
+    } else {
+        eprintln!("Error: Shadow persona not found!");
+        std::process::exit(1);
+    }
 
     let user_input = UserInput::new_for_tui();
 
@@ -120,7 +126,7 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
         terminal.draw(|f| app.draw(f))?;
 
-        if event::poll(Duration::from_millis(50))? {
+        if event::poll(Duration::from_millis(10))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     let should_continue = app.handle_key(key);
@@ -167,7 +173,9 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
     let output: SharedOutput = Arc::new(CliOutput);
 
     let mut user_input = UserInput::new(Some(Arc::clone(&output)));
-    let mut shadow = GrokConnection::new(Arc::clone(&output));
+    let persona = Persona::from_yaml_file(Path::new("personas/shadow.yaml"))
+        .expect("Failed to load shadow persona");
+    let mut shadow = GrokConnection::new(output.clone(), Arc::new(persona));
     let twitter = TwitterConnection::new(Arc::clone(&output));
 
     println!("Welcome to Shadow (CLI Mode)");

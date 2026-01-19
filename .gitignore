@@ -1,3 +1,6 @@
 /target
 /conversation_history.json
 /.env
+/personas
+/personas/*.yaml
+/*.log

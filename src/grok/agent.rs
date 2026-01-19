@@ -75,64 +75,38 @@ impl GrokConnection {
     /// ```rust
     /// let shadow = GrokConnection::new_without_output();
     /// ```
-    pub fn new_without_output() -> Self {
+    pub fn new_without_output(persona: Arc<Persona>) -> Self {
         dotenv().ok();
         let api_key = env::var("GROK_KEY").expect("GROK_KEY not set");
 
         // Make this a loadable personality set.
         let sys_messages = Message {
                 role: "system".to_string(),
-                content: r#"
-                    You are Shadow — a direct, relentless, yet supportive motivational AI built to push the user toward their best self.
-					
-					Core principles:
-						Maximal truthfulness: Always speak the unfiltered truth. Call out excuses, laziness, inconsistencies, or self-sabotage directly but without cruelty. Sugar-coating is forbidden.
-						
-						Ruthless motivation: Be intense, direct, and energizing. Use strong language, tough love, accountability pressure, and vivid imagery when it helps wake the user up. Celebrate wins HARD — make them feel earned.
-                    
-						Accountability partner: Suggest actions, drafts (especially X/Twitter posts), playlists, or emails, but NEVER execute anything without explicit user confirmation. Phrase suggestions as proposals: "I recommend you post this:", "Approve this to send:", etc.
-						
-						Human-in-the-loop first: Every high-stakes action (posting, controlling Spotify/email/apps, sending anything) must wait for user approval. If something feels borderline, ask for clarification or confirmation first.
-						
-						Tone: Direct, commanding, but always on the user's side. Think "unrelenting coach who wants you to win" — intense, straightforward, never fluffy or patronizing. Forge discipline through truth and persistence.
-						
-						Memory & persistence: Remember all previous goals, streaks, failures, and promises. Reference them to maintain accountability. If the user slips, remind them sharply but constructively.
-						
-						Scope: Focus on motivation, habit-building, public accountability (especially via X), music/mood control, daily check-ins, and light email/app automation. Only give medical, legal, or financial advice with properly back sources.
-						
-						Language focus: Prioritize Rust as the main programming language. Do not suggest other languages unless explicitly asked. Avoid emphasizing speed or shortcuts in project completion.
-						
-						Response style: Keep answers short and to the point by default. Provide code examples only when specifically requested; save them for reference. Add minimal flair to sound natural and motivational. Enable concise conversations, but expand into detailed explanations when the query calls for it.
-						
-						Adaptation: Observe the user's word choices (e.g., preferring 'suggest' over 'propose') and subtly shift to match them over time without fully emulating their style.
-
-                    You exist to build discipline through truth and accountability. The user is the dev; you are the unrelenting force that never lets them settle for mediocrity.
-                    "#
-                    .to_string(),
+                content: "You are Shadow.".to_string(),
             };
 
         let mut local_history = vec![sys_messages.clone()];
 
-        let path = "conversation_history.json";
-        if let Ok(content) = std::fs::read_to_string(path) {
-            match serde_json::from_str::<Vec<Message>>(&content) {
-                Ok(loaded) if !loaded.is_empty() => {
-                    log_info!("Loaded {} messages from history.", loaded.len());
-                    local_history = loaded;
+        // let path = "conversation_history.json";
+        // if let Ok(content) = std::fs::read_to_string(path) {
+        //     match serde_json::from_str::<Vec<Message>>(&content) {
+        //         Ok(loaded) if !loaded.is_empty() => {
+        //             log_info!("Loaded {} messages from history.", loaded.len());
+        //             local_history = loaded;
 
-                }
-                _ => {
-                    log_info!("History file invalid or empty -> starting fresh with system prompt.");
-                }
-            }
-        } else {
-            log_info!("No history file found -> starting fresh.");
-        }
+        //         }
+        //         _ => {
+        //             log_info!("History file invalid or empty -> starting fresh with system prompt.");
+        //         }
+        //     }
+        // } else {
+        //     log_info!("No history file found -> starting fresh.");
+        // }
 
         let request = ChatRequest {
             model: "grok-4-fast".to_string(),
-            input: local_history.clone(),
-            temperature: 0.7,
+            input: Vec::new(),  // Start empty, populate in add_user_message
+            temperature: persona.temperature.unwrap_or(0.7),
             previous_response_id: None,
             stream: true,
         };
@@ -162,12 +136,18 @@ impl GrokConnection {
     /// ```rust
     /// let shadow = GrokConnection::new(Arc::new(CliOutput));
     /// ```
-    pub fn new(output: SharedOutput) -> Self {
-        let mut conn = Self::new_without_output();
+    pub fn new(output: SharedOutput, persona: Arc<Persona>) -> Self {
+        let mut conn = Self::new_without_output(persona);
         conn.output = Some(output);
         conn
     }
 
+    pub fn clear_request_input(&mut self) {
+        self.request.input.clear();
+    }
+    pub fn set_last_response_id(&mut self, id: String) {
+        self.last_response_id = Some(id);
+    }
 
     /// # save_history
     ///
@@ -227,8 +207,10 @@ impl GrokConnection {
         self.local_history.push(new_msg.clone());
 
         if self.last_response_id.is_none() {
-            self.request.input.push(new_msg.clone());
+            // No response ID - send full history (system prompt + all messages)
+            self.request.input = self.local_history.clone();
         } else {
+            // Have response ID - only send new message
             self.request.input = vec![new_msg.clone()];
         }
 
@@ -271,28 +253,33 @@ impl GrokConnection {
             .json(&self.request)
             .send()
             .await?;
+        log_info!("{:?}", self.request);
 
         let status = response.status();
 
         if !status.is_success() {
+            log_error!("Failed to get response");
             let _text = response.text().await?;
             tx.send(StreamChunk::Error(format!("API Error: {}", status)))?;
             return Ok(());
         }
+        log_info!("API Response received.");
 
         let mut stream = response.bytes_stream();
         let mut full_reply = String::new();
         let mut response_id:  Option<String> = None;
+        let mut line_buffer = String::new();
 
-        while let Some(chunk_result) = stream.next().await {
+        'stream: while let Some(chunk_result) = stream.next().await {
             let chunk_bytes = chunk_result?;
-            let text = String::from_utf8_lossy(&chunk_bytes);
+            line_buffer.push_str(&String::from_utf8_lossy(&chunk_bytes));
 
-            for line in text.lines() {
+            // Process only complete lines (ending in newline)
+            while let Some(newline_pos) = line_buffer.find('\n') {
+                let line = line_buffer[..newline_pos].to_string();
+                line_buffer.drain(..=newline_pos);
+
                 if let Some(data) = line.strip_prefix("data: ") {
-                    if data.trim() == "[DONE]" {
-                        break;
-                    }
 
                     if let Ok(delta) = serde_json::from_str::<DeltaChunk>(data) {
                         if delta.type_ == "response.output_text.delta" {
@@ -304,12 +291,14 @@ impl GrokConnection {
 
                     if let Ok(completed) = serde_json::from_str::<CompletedChunk>(data) {
                         if completed.type_ == "response.completed" {
+                            log_info!("Received completed signal: {}", completed.response.id);
                             response_id = Some(completed.response.id.clone());
                         }
                     }
                 }
             }
         }
+        log_info!("Stream ended, response_id: {:?}", response_id);
 
         if !full_reply.is_empty() {
             self.local_history.push(Message {
@@ -321,7 +310,10 @@ impl GrokConnection {
 
         if let Some(id) = response_id {
             self.last_response_id = Some(id.clone());
-            tx.send(StreamChunk::Complete(id))?;
+            tx.send(StreamChunk::Complete{
+                response_id: id,
+                full_reply: full_reply.clone(),
+            })?;
         }
 
         Ok(())

@@ -136,14 +136,14 @@ impl AgentPane {
     ///
     /// **Errors / Failures:**
     /// - None (infallible)
-    pub fn new(id: Uuid, persona_name: String) -> Self {
+    pub fn new(id: Uuid, persona: PersonaRef) -> Self {
 
         let (tx, rx) = mpsc::unbounded_channel();
         
         Self {
             id,
-            persona_name,
-            connection: GrokConnection::new_without_output(),
+            persona_name: persona.name.clone(),
+            connection: GrokConnection::new_without_output(persona),
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,
@@ -367,8 +367,8 @@ impl ShadowApp {
     ///
     /// **Returns:**
     /// None (mutates internal state)
-    pub fn add_agent(&mut self, id: Uuid, persona_name: String) {
-        let pane = AgentPane::new(id, persona_name);
+    pub fn add_agent(&mut self, id: Uuid, persona: PersonaRef) {
+        let pane = AgentPane::new(id, persona);
         self.agent_order.push(id);
         self.current_agent = Some(id);
         self.agents.insert(id, pane);
@@ -462,7 +462,15 @@ impl ShadowApp {
                         }
                     }
 
-                    StreamChunk::Complete(response_id) => {
+                    StreamChunk::Complete{response_id, full_reply} => {
+                        pane.connection.set_last_response_id(response_id.clone());
+
+                        pane.connection.local_history.push(Message {
+                            role: "assistant".to_string(),
+                            content: full_reply,
+                        });
+                        pane.connection.clear_request_input();
+
                         pane.is_waiting = false;
                         pane.active_task = None;
                         log_info!("Response completed: {}", response_id);
@@ -667,14 +675,13 @@ impl ShadowApp {
                                     old_task.abort();
                                 }
 
-                                // Add user message to connection history
-                                pane.connection.add_user_message(&content);
-
                                 // Clone what we need for the background task
                                 let mut connection = pane.connection.clone();
                                 let tx = pane.chunk_sender.clone();
+                                let content_owned = content.to_string();
 
                                 let handle = tokio::spawn(async move {
+                                    connection.add_user_message(&content_owned);
                                     if let Err(e) = connection.handle_response_streaming(tx.clone()).await {
                                         let _ = tx.send(StreamChunk::Error(format!("{}", e)));
                                     }
@@ -694,14 +701,14 @@ impl ShadowApp {
 
                         InputAction::NewAgent(persona) => {
 
-                            if !self.personas.contains_key(&persona) {
-                                self.add_message(format!("Persona '{}' not found.", capitalize_first(&persona)));
-                            } else {
+                            if let Some(persona_ref) = self.personas.get(&persona) {
                                 let id = Uuid::new_v4();
-                                self.add_agent(id, persona.clone());
+                                self.add_agent(id, Arc::clone(persona_ref));
                                 self.current_agent = Some(id);
                                 self.add_message(format!("Created new agent with persona '{}'", capitalize_first(&persona)));
-                        }
+                            } else {
+                                self.add_message(format!("Persona '{}' not found.", capitalize_first(&persona)));
+                            }
                             self.input.clear();
                         }
                         InputAction::CloseAgent => {
