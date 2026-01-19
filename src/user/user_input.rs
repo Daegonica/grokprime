@@ -148,12 +148,16 @@ impl UserInput {
         let cmd = UserCommand::from_str(potential_command).unwrap_or(UserCommand::Unknown);
 
         match cmd {
+            // System OS info command
             UserCommand::System => {
                 let output_text = self.os_info.display_all();
                 InputAction::ContinueNoSend(output_text)
             },
+
+            // Shutdown command
             UserCommand::Quit | UserCommand::Exit => InputAction::Quit,
 
+            // Twitter related commands
             UserCommand::Tweet => {
                 if remainder.is_empty() {
                     self.output.display("Usage: tweet <your message>".to_string());
@@ -162,7 +166,6 @@ impl UserInput {
                     InputAction::PostTweet(remainder.to_string())
                 }
             },
-
             UserCommand::Draft => {
                 if remainder.is_empty() {
                     self.output.display("Usage: draft <your idea>".to_string());
@@ -171,6 +174,11 @@ impl UserInput {
                     InputAction::DraftTweet(remainder.to_string())
                 }
             },
+
+            // Agent management commands
+            UserCommand::Status => {
+                InputAction::AgentStatus
+            }
             UserCommand::New => {
                 if remainder.is_empty() {
                     self.output.display("Usage: new <persona>".to_string());
@@ -182,6 +190,7 @@ impl UserInput {
             UserCommand::Close => InputAction::CloseAgent,
             UserCommand::List => InputAction::ListAgents,
 
+            // Send as regular message to agent
             UserCommand::Unknown => InputAction::SendAsMessage(raw_input.to_string()),
         }
     }
@@ -215,6 +224,7 @@ enum UserCommand {
     New,
     Close,
     List,
+    Status,
 
     #[strum(disabled)]
     Unknown,

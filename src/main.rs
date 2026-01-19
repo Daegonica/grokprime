@@ -60,6 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+
 /// # run_tui_mode
 ///
 /// **Purpose:**
@@ -89,18 +90,20 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
-    let mut app = ShadowApp::new();
     let default_persona = "shadow".to_string();
     let default_id = Uuid::new_v4();
+
+    // TUI setup
+    let mut app = ShadowApp::new();
+
     app.add_agent(default_id, default_persona);
     app.current_agent = Some(default_id);
 
     let output_buffer = app.get_message_buffer();
     let output: SharedOutput = Arc::new(TuiOutput::new(output_buffer));
 
+    // Initialize user input handler
     let user_input = UserInput::new(Arc::clone(&output));
-    let shadow = GrokConnection::new(Arc::clone(&output));
-    // let twitter = TwitterConnection::new(Arc::clone(&output));
 
     app.user_input = Some(user_input);
     app.add_message("Welcome to Shadow (TUI Mode)");
@@ -123,12 +126,12 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
     }
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
-    
-    let _ = shadow.save_history("conversation_history.json");
 
     Ok(())
 }
 
+
+// TODO: Refactor RUN_CLI_MODE to match run_tui_mode functionality and style
 /// # run_cli_mode
 ///
 /// **Purpose:**
@@ -205,7 +208,7 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
                     InputAction::DoNothing => {
                         continue;
                     }
-                    InputAction::NewAgent(_) | InputAction::CloseAgent | InputAction::ListAgents => todo!(),
+                    InputAction::NewAgent(_) | InputAction::CloseAgent | InputAction::ListAgents | InputAction::AgentStatus => todo!(),
                 }
             }
             None => continue,

@@ -534,16 +534,15 @@ impl ShadowApp {
     pub fn handle_key(&mut self, key: KeyEvent) -> bool {
         match key.code {
             
+            // Agent panel control
             KeyCode::Tab if !key.modifiers.contains(KeyModifiers::SHIFT) => {
                 self.switch_agent(true);
                 true
             }
-
             KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => {
                 self.switch_agent(false);
                 true
             }
-
             KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 if let Some(id) = self.current_agent {
                     self.remove_agent(id);
@@ -563,99 +562,9 @@ impl ShadowApp {
                 true
             }
             KeyCode::Enter => {
-                if !self.input.trim().is_empty() {
-                    let line = self.input.trim().to_string();
-                    let user_input = self.user_input.clone();
-
-                    if line == "status" {
-
-                        let mut status = String::new();
-                        status.push_str(&format!("Current agent: {}\n", self.current_agent
-                            .and_then(|id| self.agents.get(&id))
-                            .map(|pane| &pane.persona_name)
-                            .unwrap_or(&"<none>".to_string())));
-
-                        status.push_str(&format!(" - Current pane: {}\n", self.current_pane_mut()
-                        .map(|pane| &pane.persona_name)
-                        .unwrap_or(&"<none>".to_string())));
-
-                        status.push_str(" - All agents:\n");
-                        
-                        for id in &self.agent_order {
-                            let pane = &self.agents[id];
-                            let marker = if Some(*id) == self.current_agent {" ->"} else {" "};
-                            status.push_str(&format!("{} {}\n", marker, pane.persona_name));
-                        }
-                        status.push_str(&format!(" - Total tabs: {}", self.agent_order.len()));
-
-                        if let Some(pane) = self.current_pane_mut() {
-                            pane.add_message(status);
-                        } else {
-                            self.add_message(status);
-                        }
-
-                        self.input.clear();
-                    }
-
-                    let mut agent_unified_message: Option<UnifiedMessage> = None;
-                    if let Some(pane) = self.current_pane_mut() {
-                        if let Some(user_input) = user_input {
-                            match user_input.process_input(&line) {
-                                InputAction::DoNothing => {
-                                    self.input.clear();
-                                }
-                                InputAction::ContinueNoSend(msg) => {
-                                    self.add_message(format!("> {}", msg));
-                                    self.input.clear();
-                                }
-                                InputAction::Quit => {
-                                    self.input.clear();
-                                    return false;
-                                },
-                                InputAction::SendAsMessage(content) => {
-                                    pane.add_message(format!("> {}", content));
-                                    self.input.clear();
-                                }
-                                InputAction::PostTweet(_content) => todo!(),
-                                InputAction::DraftTweet(_content) => todo!(),
-
-                                InputAction::NewAgent(persona) => {
-                                    let id = Uuid::new_v4();
-                                    self.add_agent(id, persona.clone());
-                                    self.current_agent = Some(id);
-                                    self.add_message(format!("Created new agent with persona '{}'", persona));
-                                    self.input.clear();
-                                }
-                                InputAction::CloseAgent => {
-                                    if let Some(id) = self.current_agent {
-                                        self.remove_agent(id);
-                                        self.add_message("Closed current agent.");
-                                    }
-                                    self.input.clear();
-                                }
-                                InputAction::ListAgents => {
-                                    let personas = vec!["shadow"];
-                                    self.add_message(format!("Available personas: {}", personas.join(", ")));
-                                    self.input.clear();
-                                }
-
-                            }
-                        } else {
-                            pane.add_message(format!("> {}", line));
-                            agent_unified_message = Some(UnifiedMessage {
-                                text: line.clone(),
-                                source: MessageSource::Agent(pane.persona_name.clone()),
-                                timestamp: SystemTime::now(),
-                            });
-                            self.input.clear();
-                        }
-                    } else {
-                        self.add_message("No agent available. Create one with 'new <persona>'");
-                        self.input.clear();
-                    }
-                    if let Some(msg) = agent_unified_message {
-                        self.unified_messages.push_back(msg);
-                    }
+                let shutdown = self.enter_key();
+                if shutdown {
+                    return false;
                 }
                 true
             }
@@ -694,6 +603,106 @@ impl ShadowApp {
             }
             _ => true,
         }
+    }
+
+    fn agent_status(&mut self) {
+        let mut status = String::new();
+        status.push_str(&format!("Current agent: {}\n", self.current_agent
+            .and_then(|id| self.agents.get(&id))
+            .map(|pane| &pane.persona_name)
+            .unwrap_or(&"<none>".to_string())));
+
+        status.push_str(&format!(" - Current pane: {}\n", self.current_pane_mut()
+        .map(|pane| &pane.persona_name)
+        .unwrap_or(&"<none>".to_string())));
+
+        status.push_str(" - All agents:\n");
+        
+        for id in &self.agent_order {
+            let pane = &self.agents[id];
+            let marker = if Some(*id) == self.current_agent {" ->"} else {" "};
+            status.push_str(&format!("{} {}\n", marker, pane.persona_name));
+        }
+        status.push_str(&format!(" - Total tabs: {}", self.agent_order.len()));
+
+        self.add_message(format!("{}", status));
+    }
+
+    fn enter_key(&mut self) -> bool {
+        let mut shutdown_signal_sent = false;
+        if !self.input.trim().is_empty() {
+            let line = self.input.trim().to_string();
+            let user_input = self.user_input.clone();
+
+            let mut agent_unified_message: Option<UnifiedMessage> = None;
+            if let Some(pane) = self.current_pane_mut() {
+                if let Some(user_input) = user_input {
+                    match user_input.process_input(&line) {
+                        InputAction::DoNothing => {
+                            self.input.clear();
+                        }
+                        InputAction::ContinueNoSend(msg) => {
+                            self.add_message(format!("{}", msg));
+                            self.input.clear();
+                        }
+                        InputAction::Quit => {
+                            self.input.clear();
+                            shutdown_signal_sent = true;
+                        },
+                        InputAction::SendAsMessage(content) => {
+                            pane.add_message(format!("> {}", content));
+                            self.input.clear();
+                        }
+                        InputAction::PostTweet(_content) => todo!(),
+                        InputAction::DraftTweet(_content) => todo!(),
+
+                        InputAction::AgentStatus => {
+                            self.agent_status();
+                            self.input.clear();
+                        },
+
+                        InputAction::NewAgent(persona) => {
+                            let id = Uuid::new_v4();
+                            self.add_agent(id, persona.clone());
+                            self.current_agent = Some(id);
+                            self.add_message(format!("Created new agent with persona '{}'", persona));
+                            self.input.clear();
+                        }
+                        InputAction::CloseAgent => {
+                            if let Some(id) = self.current_agent {
+                                self.remove_agent(id);
+                                self.add_message("Closed current agent.");
+                            }
+                            self.input.clear();
+                        }
+                        InputAction::ListAgents => {
+                            let personas = vec!["shadow"];
+                            self.add_message(format!("Available personas: {}", personas.join(", ")));
+                            self.input.clear();
+                        }
+
+                    }
+                } else {
+                    pane.add_message(format!("> {}", line));
+                    agent_unified_message = Some(UnifiedMessage {
+                        text: line.clone(),
+                        source: MessageSource::Agent(pane.persona_name.clone()),
+                        timestamp: SystemTime::now(),
+                    });
+                    self.input.clear();
+                }
+            } else {
+                self.add_message("No agent available. Create one with 'new <persona>'");
+                self.input.clear();
+            }
+            if let Some(msg) = agent_unified_message {
+                self.unified_messages.push_back(msg);
+            }
+        }
+        if shutdown_signal_sent {
+            return true;
+        }
+        return false;
     }
 
     fn calculate_input_height(&self, width: u16) -> u16 {

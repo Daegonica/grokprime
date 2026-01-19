@@ -242,6 +242,7 @@ pub enum InputAction {
     PostTweet(String),
     DraftTweet(String),
     NewAgent(String),
+    AgentStatus,
     CloseAgent,
     ListAgents,
 }
