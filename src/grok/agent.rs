@@ -21,7 +21,7 @@
 //! ---------------------------------------------------------------
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
-
+use futures_util::StreamExt;
 use crate::prelude::*;
 
 /// # GrokConnection
@@ -43,25 +43,26 @@ use crate::prelude::*;
 /// shadow.add_user_message("Hello!");
 /// shadow.handle_response().await?;
 /// ```
+#[derive(Debug, Clone)]
 pub struct GrokConnection {
     api_key: String,
     client: Client,
     request: ChatRequest,
     last_response_id: Option<String>,
     pub local_history: Vec<Message>,
-    output: SharedOutput,
+    output: Option<SharedOutput>,
 }
 
 
 impl GrokConnection {
 
-    /// # new
+    /// # new_without_output
     ///
     /// **Purpose:**
     /// Creates a new GrokConnection instance with loaded history or fresh system prompt.
     ///
     /// **Parameters:**
-    /// - `output`: Shared output handler for displaying messages
+    /// None (uses channel-based communication pattern)
     ///
     /// **Returns:**
     /// Initialized GrokConnection ready for conversation
@@ -72,10 +73,9 @@ impl GrokConnection {
     ///
     /// **Examples:**
     /// ```rust
-    /// let output: SharedOutput = Arc::new(CliOutput);
-    /// let shadow = GrokConnection::new(output);
+    /// let shadow = GrokConnection::new_without_output();
     /// ```
-    pub fn new(output: SharedOutput) -> Self {
+    pub fn new_without_output() -> Self {
         dotenv().ok();
         let api_key = env::var("GROK_KEY").expect("GROK_KEY not set");
 
@@ -117,16 +117,16 @@ impl GrokConnection {
         if let Ok(content) = std::fs::read_to_string(path) {
             match serde_json::from_str::<Vec<Message>>(&content) {
                 Ok(loaded) if !loaded.is_empty() => {
-                    output.display(format!("[INFO] Loaded {} messages from history.", loaded.len()));
+                    log_info!("Loaded {} messages from history.", loaded.len());
                     local_history = loaded;
 
                 }
                 _ => {
-                    output.display(format!("[WARNING] History file invalid or empty -> starting fresh with system prompt."));
+                    log_info!("History file invalid or empty -> starting fresh with system prompt.");
                 }
             }
         } else {
-            output.display(format!("[INFO] No history file found -> starting fresh."));
+            log_info!("No history file found -> starting fresh.");
         }
 
         let request = ChatRequest {
@@ -143,9 +143,32 @@ impl GrokConnection {
             request,
             last_response_id: None,
             local_history,
-            output,
+            output: None,
         }
-    }    
+    } 
+
+    /// # new
+    ///
+    /// **Purpose:**
+    /// Creates GrokConnection for CLI mode with output handler for blocking display.
+    ///
+    /// **Parameters:**
+    /// - `output`: Shared output handler for displaying messages
+    ///
+    /// **Returns:**
+    /// Initialized GrokConnection ready for CLI usage
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// let shadow = GrokConnection::new(Arc::new(CliOutput));
+    /// ```
+    pub fn new(output: SharedOutput) -> Self {
+        let mut conn = Self::new_without_output();
+        conn.output = Some(output);
+        conn
+    }
+
+
     /// # save_history
     ///
     /// **Purpose:**
@@ -168,7 +191,11 @@ impl GrokConnection {
     pub fn save_history(&self, path: &str) -> Result<(), std::io::Error> {
         let json = serde_json::to_string_pretty(&self.local_history)?;
         std::fs::write(path, json)?;
-        self.output.display(format!("Saved history ({} messages)", self.local_history.len()));
+        if let Some(ref output) = self.output {
+            output.display(format!("Saved history ({} messages)", self.local_history.len()));
+        } else {
+            log_info!("Saved history ({} messages)", self.local_history.len());
+        }
         Ok(())
     }
 
@@ -191,6 +218,7 @@ impl GrokConnection {
     /// shadow.add_user_message("Tell me about Rust");
     /// ```
     pub fn add_user_message(&mut self, content: &str) {
+        log_info!("Adding user message: {}", content);
 
         let new_msg = Message {
             role: "user".to_string(),
@@ -229,7 +257,11 @@ impl GrokConnection {
     /// shadow.add_user_message("Hello");
     /// shadow.handle_response().await?;
     /// ```
-    pub async fn handle_response(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn handle_response_streaming(
+        &mut self,
+        tx: mpsc::UnboundedSender<StreamChunk>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        log_info!("Handling Grok API response");
         
         self.request.previous_response_id = self.last_response_id.clone();
 
@@ -241,61 +273,149 @@ impl GrokConnection {
             .await?;
 
         let status = response.status();
-        let text = response.text().await?;
 
-        let mut reply_opt: Option<String> = None;
+        if !status.is_success() {
+            let _text = response.text().await?;
+            tx.send(StreamChunk::Error(format!("API Error: {}", status)))?;
+            return Ok(());
+        }
 
-        if status.is_success() {
-            match serde_json::from_str::<ResponsesApiResponse>(&text) {
-                Ok(res) => {
-                    if let Some(first_msg) = res.output.first() {
-                        if let Some(first_block) = first_msg.content.first() {
-                            if first_block.type_ == "output_text" {
-                                let reply = first_block.text.trim().to_string();
-                                self.output.display(format!("Shadow: {}", reply));
-                                reply_opt = Some(reply);
-                                self.request.input.clear();
-                            } else {
-                                self.output.display(format!("Unexpected content type: {}", first_block.type_));
-                            }
-                        } else {
-                            self.output.display(format!("No content blocks in output message."));
+        let mut stream = response.bytes_stream();
+        let mut full_reply = String::new();
+        let mut response_id:  Option<String> = None;
+
+        while let Some(chunk_result) = stream.next().await {
+            let chunk_bytes = chunk_result?;
+            let text = String::from_utf8_lossy(&chunk_bytes);
+
+            for line in text.lines() {
+                if let Some(data) = line.strip_prefix("data: ") {
+                    if data.trim() == "[DONE]" {
+                        break;
+                    }
+
+                    if let Ok(delta) = serde_json::from_str::<DeltaChunk>(data) {
+                        if delta.type_ == "response.output_text.delta" {
+                            full_reply.push_str(&delta.delta);
+
+                            tx.send(StreamChunk::Delta(delta.delta))?;
                         }
-                    } else {
-                        self.output.display(format!("No output messages returned."));
                     }
 
-                    self.last_response_id = Some(res.id.clone());
-                }
-
-                Err(e) => {
-                    self.output.display(format!("Failed to parse /v1/responses JSON: {}", e));
-                    self.output.display(format!("Raw responses: {}", text));
-                }
-            }
-        } else {
-            match serde_json::from_str::<ApiErrorResponse>(&text) {
-                Ok(error_body) => {
-                    self.output.display(format!("API Error: {}", error_body.error.message));
-                    if let Some(code) = error_body.error.code {
-                        self.output.display(format!("Code: {}", code));
+                    if let Ok(completed) = serde_json::from_str::<CompletedChunk>(data) {
+                        if completed.type_ == "response.completed" {
+                            response_id = Some(completed.response.id.clone());
+                        }
                     }
-                }
-                Err(_) => {
-                    self.output.display(format!("Request failed with status: {}", status));
-                    self.output.display(format!("Raw response: {}", text));
                 }
             }
         }
 
-        if let Some(reply) = reply_opt {
+        if !full_reply.is_empty() {
             self.local_history.push(Message {
                 role: "assistant".to_string(),
-                content: reply,
+                content: full_reply.clone(),
             });
+            self.request.input.clear();
+        }
+
+        if let Some(id) = response_id {
+            self.last_response_id = Some(id.clone());
+            tx.send(StreamChunk::Complete(id))?;
         }
 
         Ok(())
     }
 
+    /// # handle_response
+    ///
+    /// **Purpose:**
+    /// Blocking response handler for CLI mode. Sends request and displays output synchronously.
+    ///
+    /// **Parameters:**
+    /// None (uses internal state and output handler)
+    ///
+    /// **Returns:**
+    /// `Result<(), Box<dyn std::error::Error>>` - Success or error
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// shadow.add_user_message("Hello");
+    /// shadow.handle_response().await?;
+    /// ```
+    pub async fn handle_response(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        log_info!("Handling Grok API response (blocking mode)");
+        
+        self.request.previous_response_id = self.last_response_id.clone();
+
+        let response = self.client
+            .post("https://api.x.ai/v1/responses")
+            .bearer_auth(&self.api_key)
+            .json(&self.request)
+            .send()
+            .await?;
+
+        let status = response.status();
+
+        if !status.is_success() {
+            let _text = response.text().await?;
+            if let Some(ref output) = self.output {
+                output.display(format!("API Error: {}", status));
+            }
+            return Err(format!("API Error: {}", status).into());
+        }
+
+        let mut stream = response.bytes_stream();
+        let mut full_reply = String::new();
+        let mut response_id: Option<String> = None;
+
+        while let Some(chunk_result) = stream.next().await {
+            let chunk_bytes = chunk_result?;
+            let text = String::from_utf8_lossy(&chunk_bytes);
+
+            for line in text.lines() {
+                if let Some(data) = line.strip_prefix("data: ") {
+                    if data.trim() == "[DONE]" {
+                        break;
+                    }
+
+                    if let Ok(delta) = serde_json::from_str::<DeltaChunk>(data) {
+                        if delta.type_ == "response.output_text.delta" {
+                            full_reply.push_str(&delta.delta);
+                            
+                            // Display incrementally for CLI
+                            if let Some(ref output) = self.output {
+                                print!("{}", delta.delta);
+                                io::stdout().flush().ok();
+                            }
+                        }
+                    }
+
+                    if let Ok(completed) = serde_json::from_str::<CompletedChunk>(data) {
+                        if completed.type_ == "response.completed" {
+                            response_id = Some(completed.response.id.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(ref output) = self.output {
+            output.display("\n".to_string()); // Newline after streaming
+        }
+
+        if !full_reply.is_empty() {
+            self.local_history.push(Message {
+                role: "assistant".to_string(),
+                content: full_reply.clone(),
+            });
+            self.request.input.clear();
+        }
+
+        if let Some(id) = response_id {
+            self.last_response_id = Some(id);
+        }
+
+        Ok(())
+    }
 }

@@ -44,7 +44,7 @@ use std::str::FromStr;
 #[derive(Clone)]
 pub struct UserInput {
     os_info: OsInfo,
-    output: SharedOutput,
+    output: Option<SharedOutput>,
 }
 
 impl std::fmt::Debug for UserInput {
@@ -76,9 +76,13 @@ impl UserInput {
     /// ```rust
     /// let user_input = UserInput::new(Arc::clone(&output));
     /// ```
-    pub fn new(output: SharedOutput) -> Self {
+    pub fn new(output: Option<SharedOutput>) -> Self {
         let os_info = OsInfo::new();
         UserInput{ os_info, output}
+    }
+
+    pub fn new_for_tui() -> Self {
+        Self::new(None)
     }
 
     /// # read_user_input
@@ -160,7 +164,9 @@ impl UserInput {
             // Twitter related commands
             UserCommand::Tweet => {
                 if remainder.is_empty() {
-                    self.output.display("Usage: tweet <your message>".to_string());
+                    if let Some(ref output) = self.output {
+                        output.display("Usage: tweet <your message>".to_string());
+                    }
                     InputAction::DoNothing
                 } else {
                     InputAction::PostTweet(remainder.to_string())
@@ -168,7 +174,9 @@ impl UserInput {
             },
             UserCommand::Draft => {
                 if remainder.is_empty() {
-                    self.output.display("Usage: draft <your idea>".to_string());
+                    if let Some(ref output) = self.output {
+                        output.display("Usage: draft <your tweet>".to_string());
+                    }
                     InputAction::DoNothing
                 } else {
                     InputAction::DraftTweet(remainder.to_string())
@@ -181,7 +189,9 @@ impl UserInput {
             }
             UserCommand::New => {
                 if remainder.is_empty() {
-                    self.output.display("Usage: new <persona>".to_string());
+                    if let Some(ref output) = self.output {
+                        output.display("Usage: new <persona>".to_string());
+                    }
                     InputAction::DoNothing
                 } else {
                     InputAction::NewAgent(remainder.to_string())
@@ -191,7 +201,10 @@ impl UserInput {
             UserCommand::List => InputAction::ListAgents,
 
             // Send as regular message to agent
-            UserCommand::Unknown => InputAction::SendAsMessage(raw_input.to_string()),
+            UserCommand::Unknown => {
+                log_info!("Processing as regular message: {}", raw_input);
+                InputAction::SendAsMessage(raw_input.to_string())
+            },
         }
     }
 

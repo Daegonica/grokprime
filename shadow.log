@@ -1,0 +1,392 @@
+[[2026-01-19 06:33:39]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 06:44:35]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 06:44:35]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 06:44:35]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 06:44:35]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow.yaml", "personas/friday.yaml"]
+[[2026-01-19 06:44:35]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 06:44:41]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Test prompt
+[[2026-01-19 06:44:41]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Test prompt
+[[2026-01-19 06:44:41]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 06:44:43]] [Daegonica Software] <ERROR> [Shadow] - Failed to parse ResponsesApiResponse: expected value at line 1 column 1
+[[2026-01-19 06:44:43]] [Daegonica Software] <INFO> [Shadow] - Raw response text: event: response.created
+data: {"sequence_number":0,"type":"response.created","response":{"created_at":1768830283,"id":"07476bab-8060-953d-bff2-1a6560b23e2d","max_output_tokens":null,"model":"grok-4-fast-reasoning","object":"response","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"temperature":0.699999988079071,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":null,"user":null,"incomplete_details":null,"status":"in_progress","store":true,"metadata":{}}}
+
+event: response.in_progress
+data: {"sequence_number":1,"type":"response.in_progress","response":{"created_at":1768830283,"id":"07476bab-8060-953d-bff2-1a6560b23e2d","max_output_tokens":null,"model":"grok-4-fast-reasoning","object":"response","output":[],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"temperature":0.699999988079071,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":null,"user":null,"incomplete_details":null,"status":"in_progress","store":true,"metadata":{}}}
+
+event: response.output_item.added
+data: {"sequence_number":2,"type":"response.output_item.added","item":{"content":[],"id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","role":"assistant","type":"message","status":"in_progress"},"output_index":0}
+
+event: response.content_part.added
+data: {"sequence_number":3,"type":"response.content_part.added","content_index":0,"item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"part":{"type":"output_text","text":"","logprobs":[],"annotations":[]}}
+
+event: response.output_text.delta
+data: {"sequence_number":4,"type":"response.output_text.delta","content_index":0,"delta":"Test","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":5,"type":"response.output_text.delta","content_index":0,"delta":" acknowledged","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":6,"type":"response.output_text.delta","content_index":0,"delta":"—","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":7,"type":"response.output_text.delta","content_index":0,"delta":"environment","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":8,"type":"response.output_text.delta","content_index":0,"delta":"'s","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":9,"type":"response.output_text.delta","content_index":0,"delta":" solid","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":10,"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":11,"type":"response.output_text.delta","content_index":0,"delta":" When","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":12,"type":"response.output_text.delta","content_index":0,"delta":" you're","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":13,"type":"response.output_text.delta","content_index":0,"delta":" ready","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":14,"type":"response.output_text.delta","content_index":0,"delta":" to","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":15,"type":"response.output_text.delta","content_index":0,"delta":" dive","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":16,"type":"response.output_text.delta","content_index":0,"delta":" in","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":17,"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":18,"type":"response.output_text.delta","content_index":0,"delta":" drop","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":19,"type":"response.output_text.delta","content_index":0,"delta":" your","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":20,"type":"response.output_text.delta","content_index":0,"delta":" goals","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":21,"type":"response.output_text.delta","content_index":0,"delta":" or","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":22,"type":"response.output_text.delta","content_index":0,"delta":" next","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":23,"type":"response.output_text.delta","content_index":0,"delta":" move","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":24,"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":25,"type":"response.output_text.delta","content_index":0,"delta":" Let's","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":26,"type":"response.output_text.delta","content_index":0,"delta":" build","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":27,"type":"response.output_text.delta","content_index":0,"delta":" momentum","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.delta
+data: {"sequence_number":28,"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"logprobs":[]}
+
+event: response.output_text.done
+data: {"sequence_number":29,"type":"response.output_text.done","content_index":0,"item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"text":"Test acknowledged—environment's solid. When you're ready to dive in, drop your goals or next move. Let's build momentum."}
+
+event: response.content_part.done
+data: {"sequence_number":30,"type":"response.content_part.done","content_index":0,"item_id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","output_index":0,"part":{"type":"output_text","text":"Test acknowledged—environment's solid. When you're ready to dive in, drop your goals or next move. Let's build momentum.","logprobs":[],"annotations":[]}}
+
+event: response.output_item.done
+data: {"sequence_number":31,"type":"response.output_item.done","item":{"content":[{"type":"output_text","text":"Test acknowledged—environment's solid. When you're ready to dive in, drop your goals or next move. Let's build momentum.","logprobs":[],"annotations":[]}],"id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","role":"assistant","type":"message","status":"completed"},"output_index":0}
+
+event: response.completed
+data: {"sequence_number":32,"type":"response.completed","response":{"created_at":1768830283,"id":"07476bab-8060-953d-bff2-1a6560b23e2d","max_output_tokens":null,"model":"grok-4-fast-reasoning","object":"response","output":[{"content":[{"type":"output_text","text":"Test acknowledged—environment's solid. When you're ready to dive in, drop your goals or next move. Let's build momentum.","logprobs":[],"annotations":[]}],"id":"msg_07476bab-8060-953d-bff2-1a6560b23e2d","role":"assistant","type":"message","status":"completed"}],"parallel_tool_calls":true,"previous_response_id":null,"reasoning":{"effort":null,"summary":null},"temperature":0.699999988079071,"text":{"format":{"type":"text"}},"tool_choice":"auto","tools":[],"top_p":null,"usage":{"input_tokens":753,"input_tokens_details":{"cached_tokens":147},"output_tokens":162,"output_tokens_details":{"reasoning_tokens":137},"total_tokens":915,"num_sources_used":0,"num_server_side_tools_used":0,"cost_in_usd_ticks":2095500},"user":null,"incomplete_details":null,"status":"completed","store":true,"metadata":{}}}
+
+
+[[2026-01-19 06:44:54]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 06:44:54]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen
+[[2026-01-19 07:56:37]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 07:56:37]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 07:56:37]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 07:56:37]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow.yaml", "personas/friday.yaml"]
+[[2026-01-19 07:56:37]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 07:56:44]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Test prompt
+[[2026-01-19 07:56:44]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Test prompt
+[[2026-01-19 07:56:44]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 07:56:44]] [Daegonica Software] <INFO> [Shadow] - Processing SSE stream
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: Test
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  acknowledged
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: —
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: system
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: 's
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  solid
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  Now
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ,
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  drop
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  tests
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  and
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  let's
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  hit
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  real
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  goals
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  What's
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  on
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  deck
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ?
+[[2026-01-19 07:56:46]] [Daegonica Software] <INFO> [Shadow] - Adding assistant reply to history (97 chars)
+[[2026-01-19 07:57:25]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 07:57:25]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen
+[[2026-01-19 08:15:15]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 08:15:15]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 08:15:15]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 08:15:15]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow.yaml", "personas/friday.yaml"]
+[[2026-01-19 08:15:15]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 08:15:22]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Let's hope this test works
+[[2026-01-19 08:15:22]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Let's hope this test works
+[[2026-01-19 08:15:22]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 08:15:23]] [Daegonica Software] <INFO> [Shadow] - Processing SSE stream
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: Test
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  acknowledged
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: —
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: h
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: oping
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  it
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  fires
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  on
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  all
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  cylinders
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  too
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:15:25]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  Once
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  it's
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  locked
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  in
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ,
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  what's
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  first
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  goal
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  we're
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  crushing
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ?
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  Let's
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  move
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Response completed with ID: 93e140fa-2019-35a0-e8b9-180a8ffb4fae
+[[2026-01-19 08:15:26]] [Daegonica Software] <INFO> [Shadow] - Adding assistant reply to history (128 chars)
+[[2026-01-19 08:25:08]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Hmm, need to fix streaming a bit
+[[2026-01-19 08:25:08]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Hmm, need to fix streaming a bit
+[[2026-01-19 08:25:08]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 08:25:08]] [Daegonica Software] <INFO> [Shadow] - Processing SSE stream
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: Stream
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  it
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  right
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: —
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: break
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  down
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  issue
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: :
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  what's
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  gl
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: itching
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  with
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  streaming
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  setup
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ?
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  Walk
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  me
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  through
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  it
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ,
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  and
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  we'll
+[[2026-01-19 08:25:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  nail
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  a
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  fix
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  No
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  settling
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  for
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  half
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: -ass
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ed
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Response completed with ID: 5997abd4-239c-4713-7a9f-8f01dc14caee
+[[2026-01-19 08:25:13]] [Daegonica Software] <INFO> [Shadow] - Adding assistant reply to history (152 chars)
+[[2026-01-19 08:26:30]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 08:26:30]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen
+[[2026-01-19 08:42:39]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 08:42:39]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 08:42:39]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 08:42:39]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow.yaml", "personas/friday.yaml"]
+[[2026-01-19 08:42:39]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 08:42:43]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Test run
+[[2026-01-19 08:42:43]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Test run
+[[2026-01-19 08:42:43]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 08:42:44]] [Daegonica Software] <INFO> [Shadow] - Processing SSE stream
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: Test
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  acknowledged
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: —
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: environment
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: 's
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  solid
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  Fire
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  away
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  with
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  real
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  run
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  when
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you're
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  set
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  What's
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  next
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ?
+[[2026-01-19 08:42:45]] [Daegonica Software] <INFO> [Shadow] - Adding assistant reply to history (98 chars)
+[[2026-01-19 08:43:09]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Hrm, this isn't displaying the information correctly. Streaming is a pain
+[[2026-01-19 08:43:09]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Hrm, this isn't displaying the information correctly. Streaming is a pain
+[[2026-01-19 08:43:09]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 08:43:10]] [Daegonica Software] <INFO> [Shadow] - Processing SSE stream
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: I
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  hear
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: —
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: streaming
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  responses
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  can
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  be
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  fin
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: icky
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ,
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  especially
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  if
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  interface
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  is
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  gl
+[[2026-01-19 08:43:11]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: itching
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  or
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  trunc
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ating
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  output
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  What
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  specifically
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  isn't
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  displaying
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  right
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ?
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  If
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  describe
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  issue
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  (
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: or
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  paste
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  a
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  snippet
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ),
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  I
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  can
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  try
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  to
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  re
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: format
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  or
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  clarify
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  info
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  for
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Response completed with ID: 3c1f571b-ce0d-bb88-bbe3-c41d4887ee1f
+[[2026-01-19 08:43:12]] [Daegonica Software] <INFO> [Shadow] - Adding assistant reply to history (252 chars)
+[[2026-01-19 08:46:06]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: We will sort this out! Once we have your responses streaming and displaying properly then we can truly start working!
+[[2026-01-19 08:46:06]] [Daegonica Software] <INFO> [Shadow] - Adding user message: We will sort this out! Once we have your responses streaming and displaying properly then we can truly start working!
+[[2026-01-19 08:46:06]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 08:46:06]] [Daegonica Software] <INFO> [Shadow] - Processing SSE stream
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: Sounds
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: !
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  Let's
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  nail
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  down
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  this
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  streaming
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: /display
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  hic
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: cup
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  first
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  If
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  can
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  share
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  more
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  details
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: —like
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  what
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  platform
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you're
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  on
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ,
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  any
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  error
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  messages
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ,
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  or
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  even
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  a
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  screenshot
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: —I
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  can
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  guide
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  through
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  tweaks
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  or
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  suggest
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  alternatives
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  to
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  make
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  it
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  smoother
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: .
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  What's
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  the
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  main
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  snag
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  you're
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk:  seeing
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Delta chunk: ?
+[[2026-01-19 08:46:08]] [Daegonica Software] <INFO> [Shadow] - Adding assistant reply to history (277 chars)
+[[2026-01-19 10:14:47]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 10:14:47]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen
+[[2026-01-19 10:59:33]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 10:59:33]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 10:59:33]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 10:59:33]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow.yaml", "personas/friday.yaml"]
+[[2026-01-19 10:59:33]] [Daegonica Software] <INFO> [Shadow] - Loaded 5 messages from history.
+[[2026-01-19 10:59:33]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 11:00:04]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Alright. The real test. Is your streaming working?
+[[2026-01-19 11:00:04]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Alright. The real test. Is your streaming working?
+[[2026-01-19 11:00:04]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 11:00:09]] [Daegonica Software] <INFO> [Shadow] - Response completed: 71dba62b-6058-b690-ab5b-044652bb1e07
+[[2026-01-19 11:00:30]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Yes! We have victory! I need to slow down the dot animation and clean that up a bit. But yes, it's working
+[[2026-01-19 11:00:30]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Yes! We have victory! I need to slow down the dot animation and clean that up a bit. But yes, it's working
+[[2026-01-19 11:00:30]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 11:00:34]] [Daegonica Software] <INFO> [Shadow] - Response completed: 829df5d6-0e51-c2ca-3e3a-457158bd8304
+[[2026-01-19 11:00:55]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 11:00:55]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen

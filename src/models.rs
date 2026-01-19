@@ -66,7 +66,7 @@ pub struct Message {
 ///     previous_response_id: None,
 /// };
 /// ```
-#[derive(Serialize)]
+#[derive(Serialize, Debug, Clone)]
 pub struct ChatRequest {
     pub model: String,
     pub input: Vec<Message>,
@@ -75,7 +75,44 @@ pub struct ChatRequest {
     pub previous_response_id: Option<String>,
     pub stream: bool,
 }
+#[derive(Debug, Deserialize)]
+pub struct DeltaChunk {
+    #[serde(rename = "type")]
+    pub type_: String,  // "response.output_text.delta"
+    pub delta: String,   // "Test", " acknowledged", etc.
+    pub sequence_number: u32,
+    pub content_index: u32,
+    pub item_id: String,
+    pub output_index: u32,
+}
+#[derive(Debug, Deserialize)]
+pub struct CompletedChunk {
+    #[serde(rename = "type")]
+    pub type_: String,  // "response.completed"
+    pub response: ResponsesApiResponse,  // Full response with ID
+}
 
+/// # StreamChunk
+///
+/// **Summary:**
+/// Enum for typed communication between background streaming task and main TUI thread.
+///
+/// **Variants:**
+/// - `Delta(String)`: Incremental text chunk from SSE stream
+/// - `Complete(String)`: Final complete response text
+/// - `Error(String)`: Error message from streaming failure
+///
+/// **Usage Example:**
+/// ```rust
+/// tx.send(StreamChunk::Delta("Hello".to_string()))?;
+/// tx.send(StreamChunk::Complete("Full response".to_string()))?;
+/// ```
+#[derive(Debug, Clone)]
+pub enum StreamChunk {
+    Delta(String),
+    Complete(String),
+    Error(String),
+}
 
 /// # ResponsesApiResponse
 ///

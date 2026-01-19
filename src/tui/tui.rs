@@ -36,7 +36,7 @@ use std::time::SystemTime;
 use std::collections::VecDeque;
 use uuid::Uuid;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use crate::prelude::*;
 
 /// # UnifiedMessage
@@ -104,6 +104,7 @@ pub enum MessageSource {
 pub struct AgentPane {
     pub id: Uuid,
     pub persona_name: String,
+    pub connection: GrokConnection,
     pub messages: VecDeque<String>,
     pub input: String,
     pub scroll: u16,
@@ -111,7 +112,13 @@ pub struct AgentPane {
     pub is_waiting: bool,
     pub input_scroll: usize,
     pub input_max_lines: u16,
-    pub pending_messages: Arc<Mutex<Vec<String>>>,
+
+    pub chunk_receiver: mpsc::UnboundedReceiver<StreamChunk>,
+    pub chunk_sender: mpsc::UnboundedSender<StreamChunk>,
+
+    pub active_task: Option<tokio::task::JoinHandle<()>>,
+
+    pub thinking_animation_frame: usize,
 }
 
 impl AgentPane {
@@ -130,9 +137,13 @@ impl AgentPane {
     /// **Errors / Failures:**
     /// - None (infallible)
     pub fn new(id: Uuid, persona_name: String) -> Self {
-         Self {
+
+        let (tx, rx) = mpsc::unbounded_channel();
+        
+        Self {
             id,
             persona_name,
+            connection: GrokConnection::new_without_output(),
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,
@@ -140,40 +151,11 @@ impl AgentPane {
             is_waiting: false,
             input_scroll: 0,
             input_max_lines: 20,
-            pending_messages: Arc::new(Mutex::new(Vec::new())),
+            chunk_sender: tx,
+            chunk_receiver: rx,
+            active_task: None,
+            thinking_animation_frame: 0,
          }
-    }
-
-    /// # get_message_buffer
-    ///
-    /// **Purpose:**
-    /// Returns a clone of the shared message buffer for async message accumulation.
-    ///
-    /// **Returns:**
-    /// Arc-wrapped Mutex-protected vector of pending messages
-    pub fn get_message_buffer(&self) -> Arc<Mutex<Vec<String>>> {
-        Arc::clone(&self.pending_messages)
-    }
-
-    /// # flush_pending_messages
-    ///
-    /// **Purpose:**
-    /// Moves all pending messages from the buffer into the main message history.
-    ///
-    /// **Parameters:**
-    /// None
-    ///
-    /// **Returns:**
-    /// None (mutates internal state)
-    pub fn flush_pending_messages(&mut self) {
-        let messages_to_add: Vec<String> = if let Ok(mut pending) = self.pending_messages.lock() {
-            pending.drain(..).collect()
-        } else {
-            Vec::new()
-        };
-        for msg in messages_to_add {
-            self.add_message(msg);
-        }
     }
 
     /// # add_message
@@ -317,7 +299,6 @@ pub struct ShadowApp {
     pub scroll: u16,
     pub max_history: usize,
     pub user_input: Option<UserInput>,
-    pub pending_messages: Arc<Mutex<Vec<String>>>,
     pub is_waiting: bool,
     pub input_scroll: usize,
     pub input_max_lines: u16,
@@ -330,13 +311,13 @@ pub struct ShadowApp {
 
 impl Default for ShadowApp {
     fn default() -> Self {
+
         Self {
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,
             max_history: 1000,
             user_input: None,
-            pending_messages: Arc::new(Mutex::new(Vec::new())),
             is_waiting: false,
             input_scroll: 0,
             input_max_lines: 20,
@@ -392,6 +373,7 @@ impl ShadowApp {
         self.current_agent = Some(id);
         self.agents.insert(id, pane);
     }
+
     fn get_agent_name(&self, id: Uuid) -> String {
         self.agents.get(&id)
             .map(|pane| pane.persona_name.clone())
@@ -409,6 +391,13 @@ impl ShadowApp {
     /// **Returns:**
     /// None (mutates internal state)
     pub fn remove_agent(&mut self, id: Uuid) {
+        if let Some(pane) = self.agents.get_mut(&id) {
+            if let Some(task) = pane.active_task.take() {
+                task.abort();
+            }
+            // Channel will be automatically dropped when pane is removed
+        }
+
         self.agents.remove(&id);
         self.agent_order.retain(|&x| x != id);
         if self.current_agent == Some(id) {
@@ -451,40 +440,44 @@ impl ShadowApp {
     pub fn current_pane_mut(&mut self) -> Option<&mut AgentPane> {
         self.current_agent.and_then(move |id| self.agents.get_mut(&id))
     }
+    
+    pub fn poll_channels(&mut self) {
+        for (_agent_id, pane) in self.agents.iter_mut() {
+            if pane.is_waiting {
+                pane.thinking_animation_frame = (pane.thinking_animation_frame + 1) % 4;
+            }
+            
+            // Poll the receiver without taking it
+            while let Ok(chunk) = pane.chunk_receiver.try_recv() {
+                match chunk {
+                    StreamChunk::Delta(text) => {
+                        if let Some(last_msg) = pane.messages.back_mut() {
+                            if !last_msg.starts_with('>') {
+                                last_msg.push_str(&text);
+                            } else {
+                                pane.add_message(text);
+                            }
+                        } else {
+                            pane.add_message(text);
+                        }
+                    }
 
-    /// # get_message_buffer
-    ///
-    /// **Purpose:**
-    /// Returns a clone of the global message buffer for async message accumulation.
-    ///
-    /// **Returns:**
-    /// Arc-wrapped Mutex-protected vector of pending messages
-    pub fn get_message_buffer(&self) -> Arc<Mutex<Vec<String>>> {
-        Arc::clone(&self.pending_messages)
-    }
+                    StreamChunk::Complete(response_id) => {
+                        pane.is_waiting = false;
+                        pane.active_task = None;
+                        log_info!("Response completed: {}", response_id);
+                    }
 
-    /// # flush_pending_messages
-    ///
-    /// **Purpose:**
-    /// Moves all pending global messages from the buffer into the main message history.
-    ///
-    /// **Parameters:**
-    /// None
-    ///
-    /// **Returns:**
-    /// None (mutates internal state)
-    pub fn flush_pending_messages(&mut self) {
-        let messages_to_add: Vec<String> = if let Ok(mut pending) = self.pending_messages.lock() {
-            pending.drain(..).collect()
-        } else {
-            Vec::new()
-        };
-
-        for msg in messages_to_add {
-            self.add_message(msg);
+                    StreamChunk::Error(err) => {
+                        pane.add_message(format!("Error: {}", err));
+                        pane.add_message("Type your message again to retry.");
+                        pane.is_waiting = false;
+                        pane.active_task = None;
+                    }
+                }
+            }
         }
     }
-    
     /// # add_message
     ///
     /// **Purpose:**
@@ -665,7 +658,30 @@ impl ShadowApp {
                             shutdown_signal_sent = true;
                         },
                         InputAction::SendAsMessage(content) => {
-                            pane.add_message(format!("> {}", content));
+                            if let Some(pane) = self.current_pane_mut() {
+                                pane.add_message(format!("> {}", content));
+                                pane.is_waiting = true;
+                                
+                                // Cancel any existing task
+                                if let Some(old_task) = pane.active_task.take() {
+                                    old_task.abort();
+                                }
+
+                                // Add user message to connection history
+                                pane.connection.add_user_message(&content);
+
+                                // Clone what we need for the background task
+                                let mut connection = pane.connection.clone();
+                                let tx = pane.chunk_sender.clone();
+
+                                let handle = tokio::spawn(async move {
+                                    if let Err(e) = connection.handle_response_streaming(tx.clone()).await {
+                                        let _ = tx.send(StreamChunk::Error(format!("{}", e)));
+                                    }
+                                });
+
+                                pane.active_task = Some(handle);
+                            }
                             self.input.clear();
                         }
                         InputAction::PostTweet(_content) => todo!(),
@@ -677,7 +693,7 @@ impl ShadowApp {
                         },
 
                         InputAction::NewAgent(persona) => {
-                            
+
                             if !self.personas.contains_key(&persona) {
                                 self.add_message(format!("Persona '{}' not found.", capitalize_first(&persona)));
                             } else {
@@ -784,11 +800,26 @@ impl ShadowApp {
     }
 
     fn render_input(&self, frame: &mut Frame<'_>, area: Rect) {
-        let input_text = if self.is_waiting {
+        let is_waiting = self.current_pane()
+            .map(|p| p.is_waiting)
+            .unwrap_or(false);
+
+        let dots = match self.current_pane()
+            .map(|p| p.thinking_animation_frame)
+            .unwrap_or(0) 
+            {
+                0 => "   ",
+                1 => ".  ",
+                2 => ".. ",
+                3 => "...",
+                _ => "   ",
+            };
+
+        let input_text = if is_waiting {
             Text::from(vec![
                 Line::from(vec![
                     Span::styled(" > ", Style::default().fg(Color::Rgb(255, 140, 0)).add_modifier(Modifier::BOLD)),
-                    Span::styled("Shadow is thinking...", Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
+                    Span::styled(format!("Shadow is thinking...{}", dots), Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
                 ])
             ])
         } else {

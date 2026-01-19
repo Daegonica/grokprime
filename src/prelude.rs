@@ -29,10 +29,13 @@ pub use std::sync::Arc;
 pub use std::env;
 pub use std::io::{self, BufRead, Write};
 
+pub use tokio::sync::mpsc;
+pub use tokio::task;
 
 pub use std::fs::{self, read_to_string, write, File};
 pub use std::path::{Path, PathBuf};
 
+pub use dlog::{log_init, log_error, log_info, enums::OutputTarget};
 
 pub use crate::models::*;
 pub use crate::capitalize_first;
@@ -40,8 +43,7 @@ pub use crate::capitalize_first;
 pub use crate::utilities::outputs::{
     OutputHandler, 
     SharedOutput, 
-    CliOutput, 
-    TuiOutput
+    CliOutput,
 };
 pub use crate::utilities::cli::Args;
 

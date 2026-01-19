@@ -21,7 +21,8 @@
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::fmt::Debug;
 
 /// # OutputHandler
 ///
@@ -36,7 +37,7 @@ use std::sync::{Arc, Mutex};
 /// let output: SharedOutput = Arc::new(CliOutput);
 /// output.display("Hello!".to_string());
 /// ```
-pub trait OutputHandler: Send {
+pub trait OutputHandler: Send + Debug + Sync {
     fn display(&self, msg: String);
 }
 
@@ -50,56 +51,12 @@ pub trait OutputHandler: Send {
 /// let output = CliOutput;
 /// output.display("Message".to_string());
 /// ```
+#[derive(Debug)]
 pub struct CliOutput;
 
 impl OutputHandler for CliOutput {
     fn display(&self, msg: String) {
         println!("{}", msg);
-    }
-}
-
-/// # TuiOutput
-///
-/// **Summary:**
-/// TUI output implementation that accumulates messages in a shared buffer.
-///
-/// **Fields:**
-/// - `messages`: Thread-safe buffer for accumulating messages
-///
-/// **Usage Example:**
-/// ```rust
-/// let buffer = Arc::new(Mutex::new(Vec::new()));
-/// let output = TuiOutput::new(buffer);
-/// output.display("Message".to_string());
-/// ```
-pub struct TuiOutput {
-    messages: Arc<Mutex<Vec<String>>>,
-}
-
-impl TuiOutput {
-    /// # new
-    ///
-    /// **Purpose:**
-    /// Creates a new TuiOutput with the specified message buffer.
-    ///
-    /// **Parameters:**
-    /// - `messages`: Shared message buffer for accumulating output
-    ///
-    /// **Returns:**
-    /// Initialized TuiOutput instance
-    ///
-    /// **Errors / Failures:**
-    /// - None (infallible)
-    pub fn new(messages: Arc<Mutex<Vec<String>>>) -> Self {
-        Self { messages }
-    }
-}
-
-impl OutputHandler for TuiOutput {
-    fn display(&self, msg: String) {
-        if let Ok(mut msgs) = self.messages.lock() {
-            msgs.push(msg);
-        }
     }
 }
 

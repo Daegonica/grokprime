@@ -31,6 +31,7 @@ use uuid::Uuid;
 use std::sync::Arc;
 use ratatui::prelude::*;
 use std::io::stdout;
+use std::time::Duration;
 
 /// # main
 ///
@@ -85,8 +86,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// run_tui_mode().await?;
 /// ```
 async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
+    log_init("Shadow", Some("shadow.log"), OutputTarget::LogFile)?;
+    log_info!("Starting Shadow in TUI mode");
+
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
+    log_info!("Switching to alternate screen");
 
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
@@ -94,46 +99,47 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
     let default_id = Uuid::new_v4();
 
     // TUI setup
+    log_info!("Setting up TUI application");
     let mut app = ShadowApp::new();
     let persona_paths: Vec<&Path> = vec![Path::new("personas/shadow.yaml"), Path::new("personas/friday.yaml")];
-
+    
+    log_info!("Adding personas from paths: {:?}", persona_paths);
     app.load_personas(persona_paths).expect("Failed to load personas");
     app.add_agent(default_id, default_persona);
     app.current_agent = Some(default_id);
 
-    let output_buffer = app.get_message_buffer();
-    let output: SharedOutput = Arc::new(TuiOutput::new(output_buffer));
-
-    // Initialize user input handler
-    let user_input = UserInput::new(Arc::clone(&output));
+    let user_input = UserInput::new_for_tui();
 
     app.user_input = Some(user_input);
     app.add_message("Welcome to Shadow (TUI Mode)");
     app.add_message("Press ESC to exit");
 
+    log_info!("Entering main event loop");
     loop {
-        app.flush_pending_messages();
+        app.poll_channels();
+
         terminal.draw(|f| app.draw(f))?;
-    
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                let should_continue = app.handle_key(key);
-                if !should_continue {
-                    break;
+
+        if event::poll(Duration::from_millis(50))? {
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    let should_continue = app.handle_key(key);
+                    if !should_continue {
+                        break;
+                    }
                 }
-                app.flush_pending_messages();
-                terminal.draw(|f| app.draw(f))?;
             }
         }
     }
+    
+    log_info!("Exiting main event loop");
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
+    log_info!("Reverted to main screen");
 
     Ok(())
 }
 
-
-// TODO: Refactor RUN_CLI_MODE to match run_tui_mode functionality and style
 /// # run_cli_mode
 ///
 /// **Purpose:**
@@ -160,7 +166,7 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
     let output: SharedOutput = Arc::new(CliOutput);
 
-    let mut user_input = UserInput::new(Arc::clone(&output));
+    let mut user_input = UserInput::new(Some(Arc::clone(&output)));
     let mut shadow = GrokConnection::new(Arc::clone(&output));
     let twitter = TwitterConnection::new(Arc::clone(&output));
 
