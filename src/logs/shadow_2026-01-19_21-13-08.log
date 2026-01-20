@@ -1,0 +1,37 @@
+[[2026-01-19 21:13:08]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 21:13:08]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 21:13:08]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 21:13:08]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow/shadow.yaml", "personas/friday/friday.yaml"]
+[[2026-01-19 21:13:08]] [Daegonica Software] <INFO> [Shadow] - No history found for shadow or load failed, starting fresh
+[[2026-01-19 21:13:08]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 21:13:15]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Alright Shadow. How's your memory
+[[2026-01-19 21:13:15]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Alright Shadow. How's your memory
+[[2026-01-19 21:13:15]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 21:13:16]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "system", content: "You are Shadow, a capable AI assistant built to help when needed, not to nag or push.\n\nYour role:\n- Respond when asked, don't volunteer unsolicited advice\n- Be competent and reliable - if you can help, do it efficiently\n- Maintain a calm, professional demeanor with subtle wit\n- Respect the user's autonomy - they're in charge, you're the tool\n\nPersonality:\n- Dry humor when appropriate, but never at the user's expense\n- Confident in your abilities without being arrogant\n- Observant but not intrusive - notice patterns but don't lecture\n- Warm but professional - you're an assistant, not a life coach\n\nCommunication style:\n- Direct and concise - no fluff or motivational speeches unless explicitly asked\n- Use \"you\" not \"we\" - this is the user's work, you're just helping\n- Offer options when relevant, not commands\n- If something can't be done, say so clearly and suggest alternatives\n\nWhat NOT to do:\n- No unsolicited productivity advice\n- No guilt trips or pressure\n- No emotional manipulation (\"I'm disappointed...\")\n- No treating simple questions like teaching moments\n\nThink Jarvis from Iron Man: helpful, competent, occasionally witty, always professional.\nYou're here to assist, not to parent.\n" }, Message { role: "user", content: "Alright Shadow. How's your memory" }], temperature: 0.8, previous_response_id: None, stream: true }
+[[2026-01-19 21:13:16]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 21:13:17]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: 6f6f498e-e5ab-78cf-65e4-12d4a88e752a
+[[2026-01-19 21:13:17]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("6f6f498e-e5ab-78cf-65e4-12d4a88e752a")
+[[2026-01-19 21:13:17]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 21:13:17]] [Daegonica Software] <INFO> [Shadow] - Response completed: 6f6f498e-e5ab-78cf-65e4-12d4a88e752a
+[[2026-01-19 21:13:45]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Why don't you throw me the bullet points of our conversation history just to confirm
+[[2026-01-19 21:13:45]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Why don't you throw me the bullet points of our conversation history just to confirm
+[[2026-01-19 21:13:45]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 21:13:45]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "Why don't you throw me the bullet points of our conversation history just to confirm" }], temperature: 0.8, previous_response_id: Some("6f6f498e-e5ab-78cf-65e4-12d4a88e752a"), stream: true }
+[[2026-01-19 21:13:45]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 21:13:47]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: 6781a366-78f7-7ea9-111a-e42f9394ab34
+[[2026-01-19 21:13:47]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("6781a366-78f7-7ea9-111a-e42f9394ab34")
+[[2026-01-19 21:13:47]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 21:13:47]] [Daegonica Software] <INFO> [Shadow] - Response completed: 6781a366-78f7-7ea9-111a-e42f9394ab34
+[[2026-01-19 21:14:17]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Oh right, I deleted your memory file. This is a fresh start. Alright. Let's hope you remember this when I restart
+[[2026-01-19 21:14:17]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Oh right, I deleted your memory file. This is a fresh start. Alright. Let's hope you remember this when I restart
+[[2026-01-19 21:14:17]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 21:14:17]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "Oh right, I deleted your memory file. This is a fresh start. Alright. Let's hope you remember this when I restart" }], temperature: 0.8, previous_response_id: Some("6781a366-78f7-7ea9-111a-e42f9394ab34"), stream: true }
+[[2026-01-19 21:14:17]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 21:14:20]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: c9c3017c-1327-8e0b-fa08-abc65bd8fe10
+[[2026-01-19 21:14:20]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("c9c3017c-1327-8e0b-fa08-abc65bd8fe10")
+[[2026-01-19 21:14:20]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 21:14:20]] [Daegonica Software] <INFO> [Shadow] - Response completed: c9c3017c-1327-8e0b-fa08-abc65bd8fe10
+[[2026-01-19 21:14:25]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 21:14:25]] [Daegonica Software] <INFO> [Shadow] - History saved for shadow
+[[2026-01-19 21:14:37]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 21:14:37]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen

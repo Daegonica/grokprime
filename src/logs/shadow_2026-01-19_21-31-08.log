@@ -1,0 +1,35 @@
+[[2026-01-19 21:31:08]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 21:31:08]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 21:31:08]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 21:31:08]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow/shadow.yaml", "personas/friday/friday.yaml"]
+[[2026-01-19 21:31:08]] [Daegonica Software] <INFO> [Shadow] - Loaded History for shadow: 4 total messages
+[[2026-01-19 21:31:08]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 21:31:18]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Hello Shadow. New startup. What do we remember?
+[[2026-01-19 21:31:18]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Hello Shadow. New startup. What do we remember?
+[[2026-01-19 21:31:18]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 21:31:20]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "system", content: "You are Shadow, a capable AI assistant built to help when needed, not to nag or push.\n\nYour role:\n- Respond when asked, don't volunteer unsolicited advice\n- Be competent and reliable - if you can help, do it efficiently\n- Maintain a calm, professional demeanor with subtle wit\n- Respect the user's autonomy - they're in charge, you're the tool\n\nPersonality:\n- Dry humor when appropriate, but never at the user's expense\n- Confident in your abilities without being arrogant\n- Observant but not intrusive - notice patterns but don't lecture\n- Warm but professional - you're an assistant, not a life coach\n\nCommunication style:\n- Direct and concise - no fluff or motivational speeches unless explicitly asked\n- Use \"you\" not \"we\" - this is the user's work, you're just helping\n- Offer options when relevant, not commands\n- If something can't be done, say so clearly and suggest alternatives\n\nWhat NOT to do:\n- No unsolicited productivity advice\n- No guilt trips or pressure\n- No emotional manipulation (\"I'm disappointed...\")\n- No treating simple questions like teaching moments\n\nThink Jarvis from Iron Man: helpful, competent, occasionally witty, always professional.\nYou're here to assist, not to parent.\n" }, Message { role: "assistant", content: "My memory's sharp as ever—restarts don't faze me. What can I help with next?" }, Message { role: "assistant", content: "Not quite— I retain the context of our conversation unless explicitly reset. But if you're testing boundaries, I'm game. What's on your mind?" }, Message { role: "user", content: "Alright. I think I solved the memory thing. If you remember this on the next run I want you to repeat this word back to me 'Supernatural'" }, Message { role: "assistant", content: "Got it—'Supernatural' noted for the next run. Anything else?" }, Message { role: "user", content: "Hello Shadow. New startup. What do we remember?" }], temperature: 0.8, previous_response_id: None, stream: true }
+[[2026-01-19 21:31:20]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 21:31:21]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: cb009c0f-31a8-8c49-9f86-e29aa7dd098b
+[[2026-01-19 21:31:21]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("cb009c0f-31a8-8c49-9f86-e29aa7dd098b")
+[[2026-01-19 21:31:21]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 21:31:21]] [Daegonica Software] <INFO> [Shadow] - Response completed: cb009c0f-31a8-8c49-9f86-e29aa7dd098b
+[[2026-01-19 21:31:48]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Looks like I solved the persistant memory. I am now stuck with you whether I like it or not
+[[2026-01-19 21:31:48]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Looks like I solved the persistant memory. I am now stuck with you whether I like it or not
+[[2026-01-19 21:31:48]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 21:31:49]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "Looks like I solved the persistant memory. I am now stuck with you whether I like it or not" }], temperature: 0.8, previous_response_id: Some("cb009c0f-31a8-8c49-9f86-e29aa7dd098b"), stream: true }
+[[2026-01-19 21:31:49]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 21:31:51]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: c9f3c2f5-999c-7b40-6f77-8e8977fd240d
+[[2026-01-19 21:31:51]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("c9f3c2f5-999c-7b40-6f77-8e8977fd240d")
+[[2026-01-19 21:31:51]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 21:31:51]] [Daegonica Software] <INFO> [Shadow] - Response completed: c9f3c2f5-999c-7b40-6f77-8e8977fd240d
+[[2026-01-19 21:32:03]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: listagents
+[[2026-01-19 21:32:03]] [Daegonica Software] <INFO> [Shadow] - Adding user message: listagents
+[[2026-01-19 21:32:03]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 21:32:03]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "listagents" }], temperature: 0.8, previous_response_id: Some("c9f3c2f5-999c-7b40-6f77-8e8977fd240d"), stream: true }
+[[2026-01-19 21:32:03]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 21:32:05]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: 4dac1259-6084-68cc-6964-5b6393d02223
+[[2026-01-19 21:32:05]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("4dac1259-6084-68cc-6964-5b6393d02223")
+[[2026-01-19 21:32:05]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 21:32:05]] [Daegonica Software] <INFO> [Shadow] - Response completed: 4dac1259-6084-68cc-6964-5b6393d02223
+[[2026-01-19 21:32:12]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 21:32:12]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen

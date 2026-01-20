@@ -86,18 +86,23 @@ pub enum MessageSource {
 /// **Fields:**
 /// - `id`: Unique identifier for this agent pane
 /// - `persona_name`: The persona/agent name displayed in the UI
+/// - `connection`: GrokConnection instance for API communication
 /// - `messages`: Message history for this agent
-/// - `input`: Current input text for this agent
+/// - `input`: Current input text for this agent (currently unused - ShadowApp.input is used)
 /// - `scroll`: Vertical scroll position in message history
 /// - `max_history`: Maximum number of messages to retain
 /// - `is_waiting`: Whether the agent is waiting for a response
 /// - `input_scroll`: Vertical scroll position in input area
 /// - `input_max_lines`: Maximum visible lines in input area
-/// - `pending_messages`: Thread-safe buffer for messages from async operations
+/// - `chunk_receiver`: Receives StreamChunk messages from async streaming task
+/// - `chunk_sender`: Sends StreamChunk messages to this pane
+/// - `active_task`: Handle to the currently running async response task
+/// - `thinking_animation_frame`: Current frame of the thinking animation (0-3)
 ///
 /// **Usage Example:**
 /// ```rust
-/// let pane = AgentPane::new(Uuid::new_v4(), "shadow".to_string());
+/// let persona_ref = Arc::new(persona);
+/// let pane = AgentPane::new(Uuid::new_v4(), persona_ref);
 /// pane.add_message("Welcome!");
 /// ```
 #[derive(Debug)]
@@ -125,14 +130,14 @@ impl AgentPane {
     /// # new
     ///
     /// **Purpose:**
-    /// Creates a new agent pane with the specified ID and persona name.
+    /// Creates a new agent pane with the specified ID and persona configuration.
     ///
     /// **Parameters:**
     /// - `id`: Unique identifier for this agent
-    /// - `persona_name`: Display name for the agent persona
+    /// - `persona`: Arc-wrapped persona configuration
     ///
     /// **Returns:**
-    /// Initialized AgentPane with default values
+    /// Initialized AgentPane with default values and communication channels
     ///
     /// **Errors / Failures:**
     /// - None (infallible)
@@ -278,10 +283,10 @@ impl AgentPane {
 /// - `scroll`: Global scroll position
 /// - `max_history`: Maximum messages to retain in history
 /// - `user_input`: Optional user input handler
-/// - `pending_messages`: Thread-safe buffer for async message accumulation
 /// - `is_waiting`: Whether the app is waiting for a response
 /// - `input_scroll`: Scroll position in input area
 /// - `input_max_lines`: Maximum visible lines in input
+/// - `personas`: Map of persona names to their configurations
 /// - `agents`: Map of agent IDs to their panes
 /// - `agent_order`: Ordered list of agent IDs for tab switching
 /// - `current_agent`: Currently selected agent ID
@@ -290,7 +295,8 @@ impl AgentPane {
 /// **Usage Example:**
 /// ```rust
 /// let mut app = ShadowApp::new();
-/// app.add_agent(Uuid::new_v4(), "shadow".to_string());
+/// let persona_ref = Arc::new(persona);
+/// app.add_agent(Uuid::new_v4(), persona_ref);
 /// ```
 #[derive(Debug)]
 pub struct ShadowApp {
@@ -348,6 +354,27 @@ impl ShadowApp {
         Self::default()
     }
 
+    /// # load_personas
+    ///
+    /// **Purpose:**
+    /// Loads persona configurations from YAML files and stores them in the app.
+    ///
+    /// **Parameters:**
+    /// - `persona_paths`: Vector of paths to persona YAML files
+    ///
+    /// **Returns:**
+    /// `anyhow::Result<()>` - Success or error if any persona fails to load
+    ///
+    /// **Errors / Failures:**
+    /// - File not found
+    /// - Invalid YAML format
+    /// - Missing required fields in persona config
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// let paths = vec![Path::new("personas/shadow/shadow.yaml")];
+    /// app.load_personas(paths)?;
+    /// ```
     pub fn load_personas(&mut self, persona_paths: Vec<&Path>) -> anyhow::Result<()> {
         for path in persona_paths {
             let persona = Persona::from_yaml_file(path)?;
@@ -363,7 +390,7 @@ impl ShadowApp {
     ///
     /// **Parameters:**
     /// - `id`: Unique identifier for the new agent
-    /// - `persona_name`: Display name for the agent persona
+    /// - `persona`: Arc-wrapped persona configuration
     ///
     /// **Returns:**
     /// None (mutates internal state)
@@ -374,6 +401,16 @@ impl ShadowApp {
         self.agents.insert(id, pane);
     }
 
+    /// # get_agent_name
+    ///
+    /// **Purpose:**
+    /// Retrieves the persona name for a given agent ID.
+    ///
+    /// **Parameters:**
+    /// - `id`: The agent UUID to look up
+    ///
+    /// **Returns:**
+    /// String containing the persona name, or "<unknown>" if not found
     fn get_agent_name(&self, id: Uuid) -> String {
         self.agents.get(&id)
             .map(|pane| pane.persona_name.clone())
@@ -441,6 +478,22 @@ impl ShadowApp {
         self.current_agent.and_then(move |id| self.agents.get_mut(&id))
     }
     
+    /// # poll_channels
+    ///
+    /// **Purpose:**
+    /// Polls all agent channels for incoming StreamChunk messages and updates pane state.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// None (mutates agent pane states)
+    ///
+    /// **Details:**
+    /// - Processes Delta chunks by appending to last message
+    /// - Handles Complete chunks by updating connection state
+    /// - Processes Error chunks by displaying error messages
+    /// - Updates thinking animation frames while waiting
     pub fn poll_channels(&mut self) {
         for (_agent_id, pane) in self.agents.iter_mut() {
             if pane.is_waiting {
@@ -648,6 +701,22 @@ impl ShadowApp {
         self.add_message(format!("{}", status));
     }
 
+    /// # enter_key
+    ///
+    /// **Purpose:**
+    /// Processes the Enter key event, handling input commands and sending messages to agents.
+    ///
+    /// **Parameters:**
+    /// None (uses self.input)
+    ///
+    /// **Returns:**
+    /// `bool` - true if shutdown signal sent (app should exit), false otherwise
+    ///
+    /// **Details:**
+    /// - Parses input through UserInput handler
+    /// - Routes commands to appropriate handlers
+    /// - Spawns async tasks for Grok API communication
+    /// - Clears input field after processing
     fn enter_key(&mut self) -> bool {
         let mut shutdown_signal_sent = false;
         if !self.input.trim().is_empty() {
@@ -814,6 +883,19 @@ impl ShadowApp {
         return false;
     }
 
+    /// # calculate_input_height
+    ///
+    /// **Purpose:**
+    /// Calculates the required height for the input widget based on content and state.
+    ///
+    /// **Parameters:**
+    /// - `width`: Available width for the input area
+    ///
+    /// **Returns:**
+    /// `u16` - Height in terminal rows needed for the input widget
+    ///
+    /// **Details:**
+    /// Returns 3 rows if waiting for response, otherwise calculates based on wrapped text
     fn calculate_input_height(&self, width: u16) -> u16 {
         if self.is_waiting{
             return 3;
@@ -833,6 +915,19 @@ impl ShadowApp {
         (lines_needed.min(self.input_max_lines as usize) as u16) + 2
     }
 
+    /// # unified_messages
+    ///
+    /// **Purpose:**
+    /// Converts unified message queue into formatted Lines for rendering.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// `Vec<Line>` - Vector of styled lines ready for ratatui rendering
+    ///
+    /// **Details:**
+    /// User messages (starting with '>') are styled in light yellow and bold
     // Need to take out all the basic code that can be turned into functions for easier reading.
     fn unified_messages(&self) -> Vec<Line<'_>> {
         let mut lines: Vec<Line> = Vec::new();
@@ -850,10 +945,33 @@ impl ShadowApp {
         lines
     }
 
+    /// # current_pane
+    ///
+    /// **Purpose:**
+    /// Returns an immutable reference to the currently selected agent pane.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// `Option<&AgentPane>` - Reference to current pane, or None if no agent selected
     fn current_pane(&self) -> Option<&AgentPane> {
         self.current_agent.and_then(|id| self.agents.get(&id))
     }
 
+    /// # pan_messages
+    ///
+    /// **Purpose:**
+    /// Converts current pane's message queue into formatted Lines for rendering.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// `Vec<Line>` - Vector of styled lines for the current agent's messages
+    ///
+    /// **Details:**
+    /// User messages (starting with '>') are styled in light yellow and bold
     fn pan_messages(&self) -> Vec<Line<'_>> {
         let mut lines: Vec<Line> = Vec::new();
         if let Some(pane) = self.current_pane() {
@@ -872,6 +990,20 @@ impl ShadowApp {
         lines
     }
 
+    /// # render_input
+    ///
+    /// **Purpose:**
+    /// Renders the input widget with appropriate styling and content based on state.
+    ///
+    /// **Parameters:**
+    /// - `frame`: The ratatui frame to render into
+    /// - `area`: The rectangular area to render the input widget
+    ///
+    /// **Returns:**
+    /// None (renders directly to frame)
+    ///
+    /// **Details:**
+    /// Shows "Shadow is thinking..." animation when waiting, otherwise shows wrapped input text
     fn render_input(&self, frame: &mut Frame<'_>, area: Rect) {
         let is_waiting = self.current_pane()
             .map(|p| p.is_waiting)
@@ -1087,6 +1219,26 @@ impl ShadowApp {
         }
     }
 }
+
+/// # render_message_section
+///
+/// **Purpose:**
+/// Standalone function to render a scrollable message section with borders and scrollbar.
+///
+/// **Parameters:**
+/// - `frame`: The ratatui frame to render into
+/// - `area`: The rectangular area to render the message section
+/// - `lines`: Vector of formatted lines to display
+/// - `title`: Title to display in the border
+/// - `scroll`: Mutable reference to scroll position (updated if out of bounds)
+///
+/// **Returns:**
+/// None (renders directly to frame)
+///
+/// **Details:**
+/// - Automatically bounds scroll position to valid range
+/// - Renders scrollbar with up/down arrows and position indicator
+/// - Applies text wrapping and orange border styling
 fn render_message_section(
     frame: &mut Frame,
     area: Rect,

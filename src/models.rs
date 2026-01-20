@@ -270,9 +270,14 @@ pub struct ApiErrorResponse {
 /// - `DoNothing`: No action needed (e.g., invalid input handled)
 /// - `ContinueNoSend(String)`: Display a message without sending to API
 /// - `SendAsMessage(String)`: Send the message to the Grok API
+/// - `ClearHistory`: Clear conversation history for current agent
+/// - `HistoryInfo`: Display history information for current agent
+/// - `SaveHistory`: Save conversation history to disk
+/// - `Summarize`: Trigger history summarization for current agent
 /// - `PostTweet(String)`: Post content to Twitter
 /// - `DraftTweet(String)`: Generate a tweet draft via AI
 /// - `NewAgent(String)`: Create a new agent with specified persona
+/// - `AgentStatus`: Display current agent status and list all agents
 /// - `CloseAgent`: Close the current agent
 /// - `ListAgents`: Display all active agents
 #[derive(Debug)]
@@ -301,6 +306,23 @@ pub enum InputAction {
     ListAgents,
 }
 
+/// # ConversationHistory
+///
+/// **Summary:**
+/// Persistent storage structure for conversation history with summarization support.
+///
+/// **Fields:**
+/// - `persona_name`: Name of the persona this history belongs to
+/// - `summary`: Optional summary of previous conversation context
+/// - `recent_messages`: Vector of recent messages kept in full detail
+/// - `total_message_count`: Total number of messages exchanged (including summarized)
+/// - `last_updated`: RFC3339 timestamp of last update
+/// - `summarization_count`: Number of times history has been summarized
+///
+/// **Usage Example:**
+/// ```rust
+/// let history = ConversationHistory::new("shadow".to_string());
+/// ```
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConversationHistory {
     pub persona_name: String,
@@ -312,6 +334,24 @@ pub struct ConversationHistory {
 }
 
 impl ConversationHistory {
+    /// # new
+    ///
+    /// **Purpose:**
+    /// Creates a new empty conversation history for a persona.
+    ///
+    /// **Parameters:**
+    /// - `persona_name`: Name of the persona this history belongs to
+    ///
+    /// **Returns:**
+    /// Initialized ConversationHistory with empty messages and current timestamp
+    ///
+    /// **Errors / Failures:**
+    /// - None (infallible)
+    ///
+    /// **Examples:**
+    /// ```rust
+    /// let history = ConversationHistory::new("shadow".to_string());
+    /// ```
     pub fn new(persona_name: String) -> Self {
         Self {
             persona_name,

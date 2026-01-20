@@ -36,10 +36,12 @@ use crate::prelude::*;
 /// - `last_response_id`: ID of the last response for conversation continuity
 /// - `local_history`: Complete conversation history including system prompts
 /// - `output`: Shared output handler for displaying messages
+/// - `persona`: The AI persona configuration for this connection
 ///
 /// **Usage Example:**
 /// ```rust
-/// let mut shadow = GrokConnection::new(Arc::clone(&output));
+/// let persona = Arc::new(persona_config);
+/// let mut shadow = GrokConnection::new(Arc::clone(&output), persona);
 /// shadow.add_user_message("Hello!");
 /// shadow.handle_response().await?;
 /// ```
@@ -63,7 +65,7 @@ impl GrokConnection {
     /// Creates a new GrokConnection instance with loaded history or fresh system prompt.
     ///
     /// **Parameters:**
-    /// None (uses channel-based communication pattern)
+    /// - `persona`: The AI persona configuration (Arc-wrapped for sharing)
     ///
     /// **Returns:**
     /// Initialized GrokConnection ready for conversation
@@ -74,7 +76,8 @@ impl GrokConnection {
     ///
     /// **Examples:**
     /// ```rust
-    /// let shadow = GrokConnection::new_without_output();
+    /// let persona = Arc::new(persona_config);
+    /// let shadow = GrokConnection::new_without_output(persona);
     /// ```
     pub fn new_without_output(persona: Arc<Persona>) -> Self {
         dotenv().ok();

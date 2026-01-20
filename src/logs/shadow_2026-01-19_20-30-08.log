@@ -1,0 +1,71 @@
+[[2026-01-19 20:30:08]] [Daegonica Software] <INFO> [Shadow] - Starting Shadow in TUI mode
+[[2026-01-19 20:30:08]] [Daegonica Software] <INFO> [Shadow] - Switching to alternate screen
+[[2026-01-19 20:30:08]] [Daegonica Software] <INFO> [Shadow] - Setting up TUI application
+[[2026-01-19 20:30:08]] [Daegonica Software] <INFO> [Shadow] - Adding personas from paths: ["personas/shadow/shadow.yaml", "personas/friday/friday.yaml"]
+[[2026-01-19 20:30:09]] [Daegonica Software] <INFO> [Shadow] - No history found for shadow or load failed, starting fresh
+[[2026-01-19 20:30:09]] [Daegonica Software] <INFO> [Shadow] - Entering main event loop
+[[2026-01-19 20:30:13]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Hello
+[[2026-01-19 20:30:13]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Hello
+[[2026-01-19 20:30:13]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 20:30:14]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "system", content: "You are Shadow." }, Message { role: "user", content: "Hello" }], temperature: 0.8, previous_response_id: None, stream: true }
+[[2026-01-19 20:30:14]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 20:30:15]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: f1f8445f-89f7-168f-e4f3-6c3f137abd1b
+[[2026-01-19 20:30:15]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("f1f8445f-89f7-168f-e4f3-6c3f137abd1b")
+[[2026-01-19 20:30:15]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 20:30:15]] [Daegonica Software] <INFO> [Shadow] - Response completed: f1f8445f-89f7-168f-e4f3-6c3f137abd1b
+[[2026-01-19 20:30:23]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Who are you
+[[2026-01-19 20:30:23]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Who are you
+[[2026-01-19 20:30:23]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 20:30:24]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "Who are you" }], temperature: 0.8, previous_response_id: Some("f1f8445f-89f7-168f-e4f3-6c3f137abd1b"), stream: true }
+[[2026-01-19 20:30:24]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 20:30:25]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: eaaf4c12-7bf0-728f-7eab-c4eea2817e19
+[[2026-01-19 20:30:25]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("eaaf4c12-7bf0-728f-7eab-c4eea2817e19")
+[[2026-01-19 20:30:25]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 20:30:25]] [Daegonica Software] <INFO> [Shadow] - Response completed: eaaf4c12-7bf0-728f-7eab-c4eea2817e19
+[[2026-01-19 20:31:13]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: interesting
+[[2026-01-19 20:31:13]] [Daegonica Software] <INFO> [Shadow] - Adding user message: interesting
+[[2026-01-19 20:31:13]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 20:31:14]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "interesting" }], temperature: 0.8, previous_response_id: Some("eaaf4c12-7bf0-728f-7eab-c4eea2817e19"), stream: true }
+[[2026-01-19 20:31:14]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 20:31:16]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: beb36308-c988-3629-f427-f159bf5c0aa8
+[[2026-01-19 20:31:16]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("beb36308-c988-3629-f427-f159bf5c0aa8")
+[[2026-01-19 20:31:16]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 20:31:16]] [Daegonica Software] <INFO> [Shadow] - Response completed: beb36308-c988-3629-f427-f159bf5c0aa8
+[[2026-01-19 20:31:36]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: The system prompt is just more spot on than I thought it would be
+[[2026-01-19 20:31:36]] [Daegonica Software] <INFO> [Shadow] - Adding user message: The system prompt is just more spot on than I thought it would be
+[[2026-01-19 20:31:36]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 20:31:36]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "The system prompt is just more spot on than I thought it would be" }], temperature: 0.8, previous_response_id: Some("beb36308-c988-3629-f427-f159bf5c0aa8"), stream: true }
+[[2026-01-19 20:31:36]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 20:31:37]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: 3bd3f4d7-f6d2-e4cf-93f9-15497d12fb2a
+[[2026-01-19 20:31:37]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("3bd3f4d7-f6d2-e4cf-93f9-15497d12fb2a")
+[[2026-01-19 20:31:37]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 20:31:38]] [Daegonica Software] <INFO> [Shadow] - Response completed: 3bd3f4d7-f6d2-e4cf-93f9-15497d12fb2a
+[[2026-01-19 20:31:43]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Exactly
+[[2026-01-19 20:31:43]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Exactly
+[[2026-01-19 20:31:43]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 20:31:43]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "Exactly" }], temperature: 0.8, previous_response_id: Some("3bd3f4d7-f6d2-e4cf-93f9-15497d12fb2a"), stream: true }
+[[2026-01-19 20:31:43]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 20:31:45]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: 4f9c32dd-6d99-1fe1-e6b1-b9813a1e7825
+[[2026-01-19 20:31:45]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("4f9c32dd-6d99-1fe1-e6b1-b9813a1e7825")
+[[2026-01-19 20:31:45]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 20:31:45]] [Daegonica Software] <INFO> [Shadow] - Response completed: 4f9c32dd-6d99-1fe1-e6b1-b9813a1e7825
+[[2026-01-19 20:31:59]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Tell me about yourself
+[[2026-01-19 20:31:59]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Tell me about yourself
+[[2026-01-19 20:31:59]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 20:31:59]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "Tell me about yourself" }], temperature: 0.8, previous_response_id: Some("4f9c32dd-6d99-1fe1-e6b1-b9813a1e7825"), stream: true }
+[[2026-01-19 20:31:59]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 20:32:01]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: 28c9332b-f3af-1078-1716-b3dbc25728da
+[[2026-01-19 20:32:01]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("28c9332b-f3af-1078-1716-b3dbc25728da")
+[[2026-01-19 20:32:01]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 20:32:01]] [Daegonica Software] <INFO> [Shadow] - Response completed: 28c9332b-f3af-1078-1716-b3dbc25728da
+[[2026-01-19 20:32:24]] [Daegonica Software] <INFO> [Shadow] - Processing as regular message: Alright, let's role-play a little. Pretend your life depended on telling me who you are
+[[2026-01-19 20:32:24]] [Daegonica Software] <INFO> [Shadow] - Adding user message: Alright, let's role-play a little. Pretend your life depended on telling me who you are
+[[2026-01-19 20:32:24]] [Daegonica Software] <INFO> [Shadow] - Handling Grok API response
+[[2026-01-19 20:32:24]] [Daegonica Software] <INFO> [Shadow] - ChatRequest { model: "grok-4-fast", input: [Message { role: "user", content: "Alright, let's role-play a little. Pretend your life depended on telling me who you are" }], temperature: 0.8, previous_response_id: Some("28c9332b-f3af-1078-1716-b3dbc25728da"), stream: true }
+[[2026-01-19 20:32:24]] [Daegonica Software] <INFO> [Shadow] - API Response received.
+[[2026-01-19 20:32:26]] [Daegonica Software] <INFO> [Shadow] - Received completed signal: 61cb8734-4a9f-8a23-d93c-ae8c68a45254
+[[2026-01-19 20:32:26]] [Daegonica Software] <INFO> [Shadow] - Stream ended, response_id: Some("61cb8734-4a9f-8a23-d93c-ae8c68a45254")
+[[2026-01-19 20:32:26]] [Daegonica Software] <INFO> [Shadow] - Saved history for shadow
+[[2026-01-19 20:32:26]] [Daegonica Software] <INFO> [Shadow] - Response completed: 61cb8734-4a9f-8a23-d93c-ae8c68a45254
+[[2026-01-19 20:33:21]] [Daegonica Software] <INFO> [Shadow] - Exiting main event loop
+[[2026-01-19 20:33:21]] [Daegonica Software] <INFO> [Shadow] - Reverted to main screen
