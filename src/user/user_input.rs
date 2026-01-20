@@ -205,6 +205,11 @@ impl UserInput {
                 log_info!("Processing as regular message: {}", raw_input);
                 InputAction::SendAsMessage(raw_input.to_string())
             },
+
+            UserCommand::ClearHistory => InputAction::ClearHistory,
+            UserCommand::SaveHistory => InputAction::SaveHistory,
+            UserCommand::HistoryInfo => InputAction::HistoryInfo,
+            UserCommand::Summarize => InputAction::Summarize,
         }
     }
 
@@ -229,11 +234,22 @@ impl UserInput {
 #[strum(serialize_all = "lowercase")]
 #[strum(ascii_case_insensitive)]
 enum UserCommand {
+    // System related
     System,
     Quit,
     Exit,
+
+    // History related
+    ClearHistory,
+    HistoryInfo,
+    Summarize,
+    SaveHistory,
+
+    // Twitter related
     Tweet,
     Draft,
+
+    // Agent related
     New,
     Close,
     List,

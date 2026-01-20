@@ -51,6 +51,7 @@ pub struct GrokConnection {
     last_response_id: Option<String>,
     pub local_history: Vec<Message>,
     output: Option<SharedOutput>,
+    pub persona: Arc<Persona>,
 }
 
 
@@ -82,26 +83,27 @@ impl GrokConnection {
         // Make this a loadable personality set.
         let sys_messages = Message {
                 role: "system".to_string(),
-                content: "You are Shadow.".to_string(),
+                content: persona.system_prompt.clone(),
             };
 
         let mut local_history = vec![sys_messages.clone()];
+        if persona.enable_history {
+            if let Ok(loaded_history) = Self::load_persona_history(&persona.name) {
+                log_info!("Loaded History for {}: {} total messages",
+                    persona.name, loaded_history.total_message_count);
 
-        // let path = "conversation_history.json";
-        // if let Ok(content) = std::fs::read_to_string(path) {
-        //     match serde_json::from_str::<Vec<Message>>(&content) {
-        //         Ok(loaded) if !loaded.is_empty() => {
-        //             log_info!("Loaded {} messages from history.", loaded.len());
-        //             local_history = loaded;
+                if let Some(summary) = loaded_history.summary {
+                    local_history.push(Message {
+                        role: "system".to_string(),
+                        content: format!("[Previous conversation summary: {}]", summary),
+                    });
+                }
 
-        //         }
-        //         _ => {
-        //             log_info!("History file invalid or empty -> starting fresh with system prompt.");
-        //         }
-        //     }
-        // } else {
-        //     log_info!("No history file found -> starting fresh.");
-        // }
+                local_history.extend(loaded_history.recent_messages);
+            } else {
+                log_info!("No history found for {} or load failed, starting fresh", persona.name);
+            }
+        }
 
         let request = ChatRequest {
             model: "grok-4-fast".to_string(),
@@ -118,6 +120,7 @@ impl GrokConnection {
             last_response_id: None,
             local_history,
             output: None,
+            persona,
         }
     } 
 
@@ -140,6 +143,53 @@ impl GrokConnection {
         let mut conn = Self::new_without_output(persona);
         conn.output = Some(output);
         conn
+    }
+
+    pub fn load_persona_history(persona_name: &str) -> Result<ConversationHistory, Box<dyn std::error::Error>> {
+        let path = format!("personas/{}/history/{}_history.json", &persona_name, persona_name);
+        let content = std::fs::read_to_string(path)?;
+        let history: ConversationHistory = serde_json::from_str(&content)?;
+        Ok(history)
+    }
+
+    pub fn save_persona_history(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let _ = std::fs::create_dir_all(format!("personas/{}/history", self.persona.name));
+
+        let limit = self.persona.history_message_limit;
+
+        let recent_start = if self.local_history.len() > limit + 1 {
+            self.local_history.len() - limit
+        } else {
+            1
+        };
+
+        let recent_messages: Vec<Message> = self.local_history[recent_start..]
+            .to_vec();
+
+        let existing_summary = self.local_history.iter()
+            .find(|msg| msg.role == "system" && msg.content.contains("[Previous conversation summary:"))
+            .and_then(|msg| {
+                msg.content
+                    .strip_prefix("[Previous conversation summary: ")
+                    .and_then(|s| s.strip_suffix("]"))
+                    .map(|s| s.to_string())
+            });
+
+        let history = ConversationHistory {
+            persona_name: self.persona.name.clone(),
+            summary: existing_summary,
+            recent_messages,
+            total_message_count: self.local_history.len() - 1,
+            last_updated: chrono::Utc::now().to_rfc3339(),
+            summarization_count: 0,
+        };
+
+        let json = serde_json::to_string_pretty(&history)?;
+        let path = format!("personas/{}/history/{}_history.json", &self.persona.name, self.persona.name);
+        std::fs::write(path, json)?;
+
+        log_info!("Saved history for {}", self.persona.name);
+        Ok(())
     }
 
     pub fn clear_request_input(&mut self) {
@@ -171,8 +221,8 @@ impl GrokConnection {
     pub fn save_history(&self, path: &str) -> Result<(), std::io::Error> {
         let json = serde_json::to_string_pretty(&self.local_history)?;
         std::fs::write(path, json)?;
-        if let Some(ref output) = self.output {
-            output.display(format!("Saved history ({} messages)", self.local_history.len()));
+        if let Some(ref _output) = self.output {
+            _output.display(format!("Saved history ({} messages)", self.local_history.len()));
         } else {
             log_info!("Saved history ({} messages)", self.local_history.len());
         }
@@ -270,7 +320,7 @@ impl GrokConnection {
         let mut response_id:  Option<String> = None;
         let mut line_buffer = String::new();
 
-        'stream: while let Some(chunk_result) = stream.next().await {
+        while let Some(chunk_result) = stream.next().await {
             let chunk_bytes = chunk_result?;
             line_buffer.push_str(&String::from_utf8_lossy(&chunk_bytes));
 
@@ -308,6 +358,26 @@ impl GrokConnection {
             self.request.input.clear();
         }
 
+        if self.persona.enable_history {
+            if let Err(e) = self.save_persona_history() {
+                log_error!("Failed to save history: {}", e);
+            }
+
+            if self.should_summarize() {
+                log_info!("History threshold reached, triggering summarization...");
+                tx.send(StreamChunk::Info("Summarizing conversation history...".to_string()))?;
+
+                if let Err(e) = self.summarize_history().await {
+                    log_error!("Summarization failed: {}", e);
+                    tx.send(StreamChunk::Error(format!("Summarization failed: {}", e)))?;
+                } else {
+                    if let Err(e) = self.save_persona_history() {
+                        log_error!("Failed to save summarized history: {}", e);
+                    }
+                }
+            }
+        }
+
         if let Some(id) = response_id {
             self.last_response_id = Some(id.clone());
             tx.send(StreamChunk::Complete{
@@ -315,6 +385,144 @@ impl GrokConnection {
                 full_reply: full_reply.clone(),
             })?;
         }
+
+        Ok(())
+    }
+
+    pub fn should_summarize(&self) -> bool {
+        if !self.persona.enable_history {
+            return false;
+        }
+
+        let message_count = self.local_history.iter()
+            .filter(|msg| msg.role != "system" || !msg.content.contains("[Previous conversation summary:"))
+            .count();
+
+        message_count > self.persona.summary_threshold
+    }
+
+    pub fn extract_summary_from_response(&self, response_text: &str) -> Result<String, Box<dyn std::error::Error>> {
+        for line in response_text.lines() {
+            if let Some(data) = line.strip_prefix("data: ") {
+                if let Ok(completed) = serde_json::from_str::<CompletedChunk>(data) {
+                    if completed.type_ == "response.completed" {
+                        if let Some(output) = completed.response.output.first() {
+                            if let Some(content) = output.content.first() {
+                                return Ok(content.text.clone());
+                            }
+                        }
+                    }
+                }
+
+                if let Ok(delta) = serde_json::from_str::<DeltaChunk>(data) {
+                    if delta.type_ == "response.output_text.delta" {
+                        return Ok(delta.delta);
+                    }
+                }
+            }
+        }
+
+        Err("Failed to extract summary from response".into())
+    }
+
+    pub fn archive_full_history(&self) -> Result<(), Box<dyn std::error::Error>> {
+        std::fs::create_dir_all("personas/archives")?;
+        
+        let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S");
+        let path = format!("personas/archives/{}_{}.json", self.persona.name, timestamp);
+
+        let json = serde_json::to_string_pretty(&self.local_history)?;
+        std::fs::write(path, json)?;
+
+        log_info!("Archived full history for {}", self.persona.name);
+        Ok(())
+    }
+
+    pub async fn summarize_history(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+
+        let historian_path = "personas/historian/historian.yaml";
+        let historian = match Persona::from_yaml_file(Path::new(historian_path)) {
+            Ok(p) => Arc::new(p),
+            Err(e) => {
+                return Err(format!("Failed to load historian persona: {}", e).into());
+            }
+        };
+
+        let limit = self.persona.history_message_limit;
+        let cutoff_index = if self.local_history.len() > limit + 1 {
+            self.local_history.len() - limit
+        } else {
+            return Ok(());
+        };
+
+        let messages_to_summarize = &self.local_history[1..cutoff_index];
+        if messages_to_summarize.is_empty() {
+            return Ok(());
+        }
+
+        let formatted = messages_to_summarize
+            .iter()
+            .filter(|msg| !msg.content.contains("[Previous conversation summary:"))
+            .map(|msg| format!("{}: {}", msg.role.to_uppercase(), msg.content))
+            .collect::<Vec<_>>()
+            .join("\n\n");
+
+        let summary_prompt = format!(
+            "Summarize this conversation:\n\n{}\n\nProvide a concise summary following your instructions.",
+            formatted
+        );
+
+        log_info!("Sending {} messages to historian for summarization", messages_to_summarize.len());
+
+        let summary_request = ChatRequest {
+            model: "grok-4-fast".to_string(),
+            input: vec![
+                Message {
+                    role: "system".to_string(),
+                    content: historian.system_prompt.clone(),
+                },
+                Message {
+                    role: "user".to_string(),
+                    content: summary_prompt,
+                },
+            ],
+            temperature: historian.temperature.unwrap_or(0.3),
+            previous_response_id: None,
+            stream: false,
+        };
+
+        let response = self.client
+            .post("https://api.x.ai/v1/responses")
+            .bearer_auth(&self.api_key)
+            .json(&summary_request)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Summarization API error: {}", response.status()).into());
+        }
+
+        let response_text = response.text().await?;
+
+        let summary = self.extract_summary_from_response(&response_text)?;
+
+        log_info!("Summary generated: {}", summary);
+
+        let system_prompt = self.local_history[0].clone();
+        let summary_message = Message {
+            role: "system".to_string(),
+            content: format!("[Previous conversation summary: {}", summary),
+        };
+
+        let recent_messages = self.local_history[cutoff_index..].to_vec();
+
+        self.archive_full_history()?;
+
+        self.local_history = vec![system_prompt, summary_message];
+        self.local_history.extend(recent_messages);
+
+        log_info!("History rebuilt with summary. Messages: {} -> {}",
+            cutoff_index + limit, self.local_history.len());
 
         Ok(())
     }
@@ -376,7 +584,7 @@ impl GrokConnection {
                             full_reply.push_str(&delta.delta);
                             
                             // Display incrementally for CLI
-                            if let Some(ref output) = self.output {
+                            if let Some(ref _output) = self.output {
                                 print!("{}", delta.delta);
                                 io::stdout().flush().ok();
                             }

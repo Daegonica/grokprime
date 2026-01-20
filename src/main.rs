@@ -224,7 +224,9 @@ async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
                     InputAction::DoNothing => {
                         continue;
                     }
-                    InputAction::NewAgent(_) | InputAction::CloseAgent | InputAction::ListAgents | InputAction::AgentStatus => todo!(),
+
+                    
+                   InputAction::HistoryInfo | InputAction::SaveHistory | InputAction::Summarize | InputAction::ClearHistory | InputAction::NewAgent(_) | InputAction::CloseAgent | InputAction::ListAgents | InputAction::AgentStatus => todo!(),
                 }
             }
             None => continue,

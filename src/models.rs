@@ -115,6 +115,7 @@ pub enum StreamChunk {
         full_reply: String,
     },
     Error(String),
+    Info(String),
 }
 
 /// # ResponsesApiResponse
@@ -278,13 +279,47 @@ pub struct ApiErrorResponse {
 pub enum InputAction {
     Quit,
     DoNothing,
+
+    // Commands that result in a message to be displayed but not sent
     ContinueNoSend(String),
+
+    // Send message to Grok API
     SendAsMessage(String),
+    ClearHistory,
+    HistoryInfo,
+    SaveHistory,
+    Summarize,
+
+    // Twitter-related actions
     PostTweet(String),
     DraftTweet(String),
+
+    // Agent management actions
     NewAgent(String),
     AgentStatus,
     CloseAgent,
     ListAgents,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ConversationHistory {
+    pub persona_name: String,
+    pub summary: Option<String>,
+    pub recent_messages: Vec<Message>,
+    pub total_message_count: usize,
+    pub last_updated: String,
+    pub summarization_count: usize,
+}
+
+impl ConversationHistory {
+    pub fn new(persona_name: String) -> Self {
+        Self {
+            persona_name,
+            summary: None,
+            recent_messages: Vec::new(),
+            total_message_count: 0,
+            last_updated: chrono::Utc::now().to_rfc3339(),
+            summarization_count: 0,
+        }
+    }
+}

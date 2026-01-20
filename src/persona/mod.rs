@@ -48,13 +48,22 @@ use std::path::Path;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Persona {
     pub name: String,
-    pub description: Option<String>,
     pub system_prompt: String,
+
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
+
+    pub description: Option<String>,
     pub tools: Option<Vec<String>>,
-    pub memory_policy: Option<String>,
-    pub startup_commands: Option<Vec<String>>,
+
+    #[serde(default = "default_true")]
+    pub enable_history: bool,
+
+    #[serde(default = "default_message_limit")]
+    pub history_message_limit: usize,
+
+    #[serde(default = "default_summary_threshold")]
+    pub summary_threshold: usize,
 }
 
 impl Persona {
@@ -83,7 +92,12 @@ impl Persona {
         let p: Persona = serde_yaml::from_str(&s)?;
         Ok(p)
     }
+
 }
+
+fn default_true() -> bool { true }
+fn default_message_limit() -> usize { 12 }
+fn default_summary_threshold() -> usize { 20 }
 
 /// # PersonaRef
 ///

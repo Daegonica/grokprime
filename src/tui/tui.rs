@@ -482,6 +482,10 @@ impl ShadowApp {
                         pane.is_waiting = false;
                         pane.active_task = None;
                     }
+
+                    StreamChunk::Info(msg) => {
+                        log_info!("Info: {}", msg);
+                    }
                 }
             }
         }
@@ -724,6 +728,68 @@ impl ShadowApp {
                             self.input.clear();
                         }
 
+                        InputAction::SaveHistory => {
+
+                            let result = pane.connection.save_persona_history();
+                            let persona_name = pane.connection.persona.name.clone();
+                            match result {
+                                Ok(_) => {
+                                    self.add_message(format!("History saved for {}", persona_name));
+                                    log_info!("History saved for {}", persona_name);
+                                },
+                                Err(e) => {
+                                    log_info!("Failed to save history: {}", e);
+                                    self.add_message(format!("Failed to save history: {}", e));
+                                }
+                            }
+                            self.input.clear();
+                        }
+
+                        InputAction::Summarize => {
+                            let mut conn = pane.connection.clone();
+                            let tx = pane.chunk_sender.clone();
+                            self.add_message("Summarization started...");
+                            tokio::spawn( async move {
+                                tx.send(StreamChunk::Info("Starting summarization...".to_string())).ok();
+                                if let Err(e) = conn.summarize_history().await {
+                                    tx.send(StreamChunk::Error(format!("Summarization error: {}", e))).ok();
+                                } else {
+                                    tx.send(StreamChunk::Info("Summarization complete.".to_string())).ok();
+                                    if let Err(e) = conn.save_persona_history() {
+                                        tx.send(StreamChunk::Error(format!("Failed to save persona history: {}", e))).ok();
+                                    }
+                                }
+                            });
+                            self.add_message("Summarization finished.");
+                            self.input.clear();
+                        }
+
+                        InputAction::HistoryInfo => {
+                            let msg_count = pane.connection.local_history.len();
+                            let has_summary = pane.connection.local_history.iter()
+                                .any(|m| m.content.contains("[Previous conversation summary:"));
+                            let persona_name = pane.connection.persona.name.clone();
+                            log_info!("{}: {} messages, Summary present: {}", persona_name, msg_count, has_summary);
+                            self.add_message(format!("History for {}: {} messages, Summary present: {}", persona_name, msg_count, has_summary));
+                            self.input.clear();
+                        }
+
+                        InputAction::ClearHistory => {
+                            let person_name = pane.connection.persona.name.clone();
+                            let path = format!("history/{}_history.json", &person_name);
+                            let result = std::fs::remove_file(&path);
+                            match result {
+                                Ok(_) => {
+                                    log_info!("Cleared history for {}", person_name);
+                                    self.add_message(format!("Cleared history for {}", person_name));
+                                },
+                                Err(_) => {
+                                    log_error!("No history file found for {}", person_name);
+                                    self.add_message(format!("No history file found for {}", person_name));
+                                }
+                            }
+                            self.input.clear();
+                        }
                     }
                 } else {
                     pane.add_message(format!("> {}", line));
