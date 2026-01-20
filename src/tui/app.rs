@@ -1,43 +1,44 @@
-//! # Daegonica Module: tui::tui
+//! # Daegonica Module: tui::app
 //!
-//! **Purpose:** Core TUI application state and rendering logic
+//! **Purpose:** Core TUI application state and coordination
 //!
 //! **Context:**
-//! - Main TUI implementation using ratatui framework
-//! - Manages multiple agent panes and message display
-//! - Handles user input and keyboard events
+//! - Central state manager for the entire TUI application
+//! - Coordinates multiple agent panes and global messages
+//! - Handles keyboard input routing and event processing
 //!
 //! **Responsibilities:**
-//! - Render TUI layout with message history and input areas
-//! - Handle keyboard input and commands
-//! - Manage multiple agent panes with tab switching
-//! - Display unified and per-agent message streams
-//! - Text wrapping and scrolling for messages and input
+//! - Manage agent lifecycle (creation, removal, switching)
+//! - Coordinate message flow between agents and UI
+//! - Handle keyboard input and route to command handlers
+//! - Orchestrate rendering pipeline
+//! - Maintain global application state
 //!
 //! **Author:** Daegonica Software
 //! **Version:** 0.1.0
-//! **Last Updated:** 2026-01-18
+//! **Last Updated:** 2026-01-20
 //!
 //! ---------------------------------------------------------------
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
 
-use ratatui::{
-    // backend::Backend,
-    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
-    layout::{Constraint, Direction, Layout, Position},
-    style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
-    Frame,
-    prelude::Rect,
-};
+use std::collections::{HashMap, VecDeque};
 use std::time::SystemTime;
-use std::collections::VecDeque;
 use uuid::Uuid;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::path::Path;
+use ratatui::{
+    crossterm::event::{KeyCode, KeyEvent, KeyModifiers},
+    layout::{Constraint, Direction, Layout, Position, Rect},
+    style::{Color, Modifier, Style},
+    text::{Text, Line, Span},
+    Frame,
+    widgets::{Block, Borders, Paragraph},
+};
+
 use crate::prelude::*;
+use crate::tui::agent_pane::AgentPane;
+use crate::tui::widgets::render_message_section;
+use crate::tui::command_handler;
 
 /// # UnifiedMessage
 ///
@@ -78,199 +79,6 @@ pub enum MessageSource {
     Agent(String),
 }
 
-/// # AgentPane
-///
-/// **Summary:**
-/// Represents an individual agent conversation pane in the TUI with its own state.
-///
-/// **Fields:**
-/// - `id`: Unique identifier for this agent pane
-/// - `persona_name`: The persona/agent name displayed in the UI
-/// - `connection`: GrokConnection instance for API communication
-/// - `messages`: Message history for this agent
-/// - `input`: Current input text for this agent (currently unused - ShadowApp.input is used)
-/// - `scroll`: Vertical scroll position in message history
-/// - `max_history`: Maximum number of messages to retain
-/// - `is_waiting`: Whether the agent is waiting for a response
-/// - `input_scroll`: Vertical scroll position in input area
-/// - `input_max_lines`: Maximum visible lines in input area
-/// - `chunk_receiver`: Receives StreamChunk messages from async streaming task
-/// - `chunk_sender`: Sends StreamChunk messages to this pane
-/// - `active_task`: Handle to the currently running async response task
-/// - `thinking_animation_frame`: Current frame of the thinking animation (0-3)
-///
-/// **Usage Example:**
-/// ```rust
-/// let persona_ref = Arc::new(persona);
-/// let pane = AgentPane::new(Uuid::new_v4(), persona_ref);
-/// pane.add_message("Welcome!");
-/// ```
-#[derive(Debug)]
-pub struct AgentPane {
-    pub id: Uuid,
-    pub persona_name: String,
-    pub connection: GrokConnection,
-    pub messages: VecDeque<String>,
-    pub input: String,
-    pub scroll: u16,
-    pub max_history: usize,
-    pub is_waiting: bool,
-    pub input_scroll: usize,
-    pub input_max_lines: u16,
-
-    pub chunk_receiver: mpsc::UnboundedReceiver<StreamChunk>,
-    pub chunk_sender: mpsc::UnboundedSender<StreamChunk>,
-
-    pub active_task: Option<tokio::task::JoinHandle<()>>,
-
-    pub thinking_animation_frame: usize,
-}
-
-impl AgentPane {
-    /// # new
-    ///
-    /// **Purpose:**
-    /// Creates a new agent pane with the specified ID and persona configuration.
-    ///
-    /// **Parameters:**
-    /// - `id`: Unique identifier for this agent
-    /// - `persona`: Arc-wrapped persona configuration
-    ///
-    /// **Returns:**
-    /// Initialized AgentPane with default values and communication channels
-    ///
-    /// **Errors / Failures:**
-    /// - None (infallible)
-    pub fn new(id: Uuid, persona: PersonaRef) -> Self {
-
-        let (tx, rx) = mpsc::unbounded_channel();
-        
-        Self {
-            id,
-            persona_name: persona.name.clone(),
-            connection: GrokConnection::new_without_output(persona),
-            messages: VecDeque::new(),
-            input: String::new(),
-            scroll: 0,
-            max_history: 1000,
-            is_waiting: false,
-            input_scroll: 0,
-            input_max_lines: 20,
-            chunk_sender: tx,
-            chunk_receiver: rx,
-            active_task: None,
-            thinking_animation_frame: 0,
-         }
-    }
-
-    /// # add_message
-    ///
-    /// **Purpose:**
-    /// Adds a message to this agent's message history and scrolls to bottom.
-    ///
-    /// **Parameters:**
-    /// - `msg`: The message content (anything that converts to String)
-    ///
-    /// **Returns:**
-    /// None (mutates internal state)
-    pub fn add_message(&mut self, msg: impl Into<String>) {
-        let msg = msg.into();
-        self.messages.push_back(msg.clone());
-        self.scroll_to_bottom();
-    }
-
-    /// # scroll_to_bottom
-    ///
-    /// **Purpose:**
-    /// Sets scroll position to maximum to show the most recent messages.
-    ///
-    /// **Parameters:**
-    /// None
-    ///
-    /// **Returns:**
-    /// None (mutates scroll state)
-    pub fn scroll_to_bottom(&mut self) {
-        self.scroll = u16::MAX;
-    }
-
-    /// # wrap_input_text
-    ///
-    /// **Purpose:**
-    /// Wraps the current input text to fit within the specified width.
-    ///
-    /// **Parameters:**
-    /// - `width`: Maximum line width in characters
-    ///
-    /// **Returns:**
-    /// Vector of wrapped lines
-    ///
-    /// **Errors / Failures:**
-    /// - None (infallible)
-    pub fn wrap_input_text(&self, width: usize) -> Vec<String> {
-        if self.input.is_empty() {
-            return vec![String::new()];
-        }
-
-        let mut lines = Vec::new();
-        let mut current_line = String::new();
-
-        for word in self.input.split_inclusive(|c: char| c.is_whitespace()) {
-            if word.contains('\n') {
-                let parts: Vec<&str> = word.split('\n').collect();
-                for (i, part) in parts.iter().enumerate() {
-                    if i > 0 {
-                        lines.push(current_line.clone());
-                        current_line.clear();
-                    }
-                    if !part.is_empty() {
-                        let test_len = current_line.len() + part.len();
-                        if test_len > width && !current_line.is_empty() {
-                            lines.push(current_line.clone());
-                            current_line = part.to_string();
-                        } else {
-                            current_line.push_str(part);
-                        }
-                    }
-                }
-                continue;
-            }
-
-            let test_len = current_line.len() + word.len();
-
-            if test_len > width && !current_line.is_empty() {
-                lines.push(current_line.trim_end().to_string());
-                current_line = word.to_string();
-            } else {
-                current_line.push_str(word);
-            }
-        }
-
-        if !current_line.is_empty() {
-            lines.push(current_line);
-        }
-
-        if lines.is_empty() {
-            vec![String::new()]
-        } else {
-            lines
-        }
-    }
-
-    /// # scroll_input_to_bottom
-    ///
-    /// **Purpose:**
-    /// Adjusts input scroll position to show the last lines of wrapped input text.
-    ///
-    /// **Parameters:**
-    /// None
-    ///
-    /// **Returns:**
-    /// None (mutates input_scroll state)
-    pub fn scroll_input_to_bottom(&mut self) {
-        let wrapped = self.wrap_input_text(100);
-        self.input_scroll = wrapped.len().saturating_sub(self.input_max_lines as usize);
-    }
-}
 
 /// # ShadowApp
 ///
@@ -317,16 +125,16 @@ pub struct ShadowApp {
 
 impl Default for ShadowApp {
     fn default() -> Self {
-
+        let tui_config = &GLOBAL_CONFIG.tui;
         Self {
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,
-            max_history: 1000,
+            max_history: tui_config.max_history_size,
             user_input: None,
             is_waiting: false,
             input_scroll: 0,
-            input_max_lines: 20,
+            input_max_lines: tui_config.max_input_lines,
             personas: HashMap::new(),
             agents: HashMap::new(),
             agent_order: Vec::new(),
@@ -467,6 +275,20 @@ impl ShadowApp {
         }
     }
 
+    /// # current_pane
+    ///
+    /// **Purpose:**
+    /// Returns an immutable reference to the currently selected agent pane.
+    ///
+    /// **Parameters:**
+    /// None
+    ///
+    /// **Returns:**
+    /// `Option<&AgentPane>` - Reference to current pane, or None if no agent selected
+    fn current_pane(&self) -> Option<&AgentPane> {
+        self.current_agent.and_then(|id| self.agents.get(&id))
+    }
+
     /// # current_pane_mut
     ///
     /// **Purpose:**
@@ -543,6 +365,7 @@ impl ShadowApp {
             }
         }
     }
+
     /// # add_message
     ///
     /// **Purpose:**
@@ -584,7 +407,7 @@ impl ShadowApp {
         let wrapped = self.wrap_input_text(100);
         self.input_scroll = wrapped.len().saturating_sub(self.input_max_lines as usize);
     }
-
+    
     /// # handle_key
     ///
     /// **Purpose:**
@@ -664,11 +487,11 @@ impl ShadowApp {
                 true
             }
             KeyCode::PageUp => {
-                self.scroll = self.scroll.saturating_sub(10);
+                self.scroll = self.scroll.saturating_sub(GLOBAL_CONFIG.tui.page_scroll_step);
                 true
             }
             KeyCode::PageDown => {
-                self.scroll = self.scroll.saturating_add(10);
+                self.scroll = self.scroll.saturating_add(GLOBAL_CONFIG.tui.page_scroll_step);
                 true
             }
             KeyCode::Esc => {
@@ -677,30 +500,7 @@ impl ShadowApp {
             _ => true,
         }
     }
-
-    fn agent_status(&mut self) {
-        let mut status = String::new();
-        status.push_str(&format!("Current agent: {}\n", self.current_agent
-            .and_then(|id| self.agents.get(&id))
-            .map(|pane| capitalize_first(&pane.persona_name))
-            .unwrap_or("<none>".to_string())));
-
-        status.push_str(&format!(" - Current pane: {}\n", self.current_pane_mut()
-        .map(|pane| capitalize_first(&pane.persona_name))
-        .unwrap_or("<none>".to_string())));
-
-        status.push_str(" - All agents:\n");
-        
-        for id in &self.agent_order {
-            let pane = &self.agents[id];
-            let marker = if Some(*id) == self.current_agent {" ->"} else {" "};
-            status.push_str(&format!("{} {}\n", marker, capitalize_first(&pane.persona_name)));
-        }
-        status.push_str(&format!(" - Total tabs: {}", self.agent_order.len()));
-
-        self.add_message(format!("{}", status));
-    }
-
+    
     /// # enter_key
     ///
     /// **Purpose:**
@@ -718,171 +518,62 @@ impl ShadowApp {
     /// - Spawns async tasks for Grok API communication
     /// - Clears input field after processing
     fn enter_key(&mut self) -> bool {
-        let mut shutdown_signal_sent = false;
-        if !self.input.trim().is_empty() {
-            let line = self.input.trim().to_string();
-            let user_input = self.user_input.clone();
+        if self.input.trim().is_empty() {
+            return false;
+        }
 
-            let mut agent_unified_message: Option<UnifiedMessage> = None;
-            if let Some(pane) = self.current_pane_mut() {
-                if let Some(user_input) = user_input {
-                    match user_input.process_input(&line) {
-                        InputAction::DoNothing => {
-                            self.input.clear();
-                        }
-                        InputAction::ContinueNoSend(msg) => {
-                            self.add_message(format!("{}", msg));
-                            self.input.clear();
-                        }
-                        InputAction::Quit => {
-                            self.input.clear();
-                            shutdown_signal_sent = true;
-                        },
-                        InputAction::SendAsMessage(content) => {
-                            if let Some(pane) = self.current_pane_mut() {
-                                pane.add_message(format!("> {}", content));
-                                pane.is_waiting = true;
-                                
-                                // Cancel any existing task
-                                if let Some(old_task) = pane.active_task.take() {
-                                    old_task.abort();
-                                }
+        let line = self.input.trim().to_string();
+        self.input.clear();
 
-                                // Clone what we need for the background task
-                                let mut connection = pane.connection.clone();
-                                let tx = pane.chunk_sender.clone();
-                                let content_owned = content.to_string();
+        let Some(user_input) = self.user_input.clone() else {
+            self.add_message("No user input handler available.");
+            return false;
+        };
 
-                                let handle = tokio::spawn(async move {
-                                    connection.add_user_message(&content_owned);
-                                    if let Err(e) = connection.handle_response_streaming(tx.clone()).await {
-                                        let _ = tx.send(StreamChunk::Error(format!("{}", e)));
-                                    }
-                                });
-
-                                pane.active_task = Some(handle);
-                            }
-                            self.input.clear();
-                        }
-                        InputAction::PostTweet(_content) => todo!(),
-                        InputAction::DraftTweet(_content) => todo!(),
-
-                        InputAction::AgentStatus => {
-                            self.agent_status();
-                            self.input.clear();
-                        },
-
-                        InputAction::NewAgent(persona) => {
-
-                            if let Some(persona_ref) = self.personas.get(&persona) {
-                                let id = Uuid::new_v4();
-                                self.add_agent(id, Arc::clone(persona_ref));
-                                self.current_agent = Some(id);
-                                self.add_message(format!("Created new agent with persona '{}'", capitalize_first(&persona)));
-                            } else {
-                                self.add_message(format!("Persona '{}' not found.", capitalize_first(&persona)));
-                            }
-                            self.input.clear();
-                        }
-                        InputAction::CloseAgent => {
-                            if let Some(id) = self.current_agent {
-                                self.remove_agent(id);
-                                self.add_message("Closed current agent.");
-                            }
-                            self.input.clear();
-                        }
-                        InputAction::ListAgents => {
-                            let personas = vec!["shadow"];
-                            self.add_message(format!("Available personas: {}", personas.join(", ")));
-                            self.input.clear();
-                        }
-
-                        InputAction::SaveHistory => {
-
-                            let result = pane.connection.save_persona_history();
-                            let persona_name = pane.connection.persona.name.clone();
-                            match result {
-                                Ok(_) => {
-                                    self.add_message(format!("History saved for {}", persona_name));
-                                    log_info!("History saved for {}", persona_name);
-                                },
-                                Err(e) => {
-                                    log_info!("Failed to save history: {}", e);
-                                    self.add_message(format!("Failed to save history: {}", e));
-                                }
-                            }
-                            self.input.clear();
-                        }
-
-                        InputAction::Summarize => {
-                            let mut conn = pane.connection.clone();
-                            let tx = pane.chunk_sender.clone();
-                            self.add_message("Summarization started...");
-                            tokio::spawn( async move {
-                                tx.send(StreamChunk::Info("Starting summarization...".to_string())).ok();
-                                if let Err(e) = conn.summarize_history().await {
-                                    tx.send(StreamChunk::Error(format!("Summarization error: {}", e))).ok();
-                                } else {
-                                    tx.send(StreamChunk::Info("Summarization complete.".to_string())).ok();
-                                    if let Err(e) = conn.save_persona_history() {
-                                        tx.send(StreamChunk::Error(format!("Failed to save persona history: {}", e))).ok();
-                                    }
-                                }
-                            });
-                            self.add_message("Summarization finished.");
-                            self.input.clear();
-                        }
-
-                        InputAction::HistoryInfo => {
-                            let msg_count = pane.connection.local_history.len();
-                            let has_summary = pane.connection.local_history.iter()
-                                .any(|m| m.content.contains("[Previous conversation summary:"));
-                            let persona_name = pane.connection.persona.name.clone();
-                            log_info!("{}: {} messages, Summary present: {}", persona_name, msg_count, has_summary);
-                            self.add_message(format!("History for {}: {} messages, Summary present: {}", persona_name, msg_count, has_summary));
-                            self.input.clear();
-                        }
-
-                        InputAction::ClearHistory => {
-                            let person_name = pane.connection.persona.name.clone();
-                            let path = format!("history/{}_history.json", &person_name);
-                            let result = std::fs::remove_file(&path);
-                            match result {
-                                Ok(_) => {
-                                    log_info!("Cleared history for {}", person_name);
-                                    self.add_message(format!("Cleared history for {}", person_name));
-                                },
-                                Err(_) => {
-                                    log_error!("No history file found for {}", person_name);
-                                    self.add_message(format!("No history file found for {}", person_name));
-                                }
-                            }
-                            self.input.clear();
-                        }
-                    }
-                } else {
-                    pane.add_message(format!("> {}", line));
-                    agent_unified_message = Some(UnifiedMessage {
-                        text: line.clone(),
-                        source: MessageSource::Agent(pane.persona_name.clone()),
-                        timestamp: SystemTime::now(),
-                    });
-                    self.input.clear();
-                }
-            } else {
-                self.add_message("No agent available. Create one with 'new <persona>'");
-                self.input.clear();
+        match user_input.process_input(&line) {
+            InputAction::DoNothing => {},
+            InputAction::ContinueNoSend(msg) => {
+                self.add_message(msg);
             }
-            if let Some(msg) = agent_unified_message {
-                self.unified_messages.push_back(msg);
+            InputAction::Quit => {
+                return true;
+            }
+            InputAction::SendAsMessage(content) => {
+                command_handler::handle_send_message(self, content);
+            }
+            InputAction::SaveHistory => {
+                command_handler::handle_save_history(self);
+            }
+            InputAction::Summarize => {
+                command_handler::handle_summarize(self);
+            }
+            InputAction::HistoryInfo => {
+                command_handler::handle_history_info(self);
+            }
+            InputAction::ClearHistory => {
+                command_handler::handle_clear_history(self);
+            }
+            InputAction::NewAgent(persona_name) => {
+                command_handler::handle_new_agent(self, persona_name);
+            }
+            InputAction::CloseAgent => {
+                command_handler::handle_close_agent(self);
+            }
+            InputAction::AgentStatus => {
+                command_handler::handle_agent_status(self);
+            }
+            InputAction::ListAgents => {
+                let personas = vec!["shadow"];
+                self.add_message(format!("Available personas: {}", personas.join(", ")));
+            }
+            InputAction::PostTweet(_) | InputAction::DraftTweet(_) => {
+                self.add_message("Twitter commands not yet implemented in TUI mode.");
             }
         }
-        if shutdown_signal_sent {
-            return true;
-        }
-        return false;
+
+        false
     }
-
+    
     /// # calculate_input_height
     ///
     /// **Purpose:**
@@ -914,7 +605,7 @@ impl ShadowApp {
 
         (lines_needed.min(self.input_max_lines as usize) as u16) + 2
     }
-
+    
     /// # unified_messages
     ///
     /// **Purpose:**
@@ -935,7 +626,7 @@ impl ShadowApp {
             let content = if unified.text.starts_with('>') {
                 Line::from(Span::styled(
                     unified.text.clone(),
-                    Style::default().fg(Color::LightYellow).add_modifier(Modifier::BOLD),
+                    Style::default().fg(GLOBAL_CONFIG.tui.user_message_color).add_modifier(Modifier::BOLD),
                 ))
             } else {
                 Line::from(unified.text.clone())
@@ -944,21 +635,7 @@ impl ShadowApp {
         }
         lines
     }
-
-    /// # current_pane
-    ///
-    /// **Purpose:**
-    /// Returns an immutable reference to the currently selected agent pane.
-    ///
-    /// **Parameters:**
-    /// None
-    ///
-    /// **Returns:**
-    /// `Option<&AgentPane>` - Reference to current pane, or None if no agent selected
-    fn current_pane(&self) -> Option<&AgentPane> {
-        self.current_agent.and_then(|id| self.agents.get(&id))
-    }
-
+    
     /// # pan_messages
     ///
     /// **Purpose:**
@@ -979,7 +656,7 @@ impl ShadowApp {
                 let content = if msg.starts_with('>') {
                     Line::from(Span::styled(
                         msg.clone(),
-                        Style::default().fg(Color::LightYellow).add_modifier(Modifier::BOLD),
+                        Style::default().fg(GLOBAL_CONFIG.tui.user_message_color).add_modifier(Modifier::BOLD),
                     ))
                 } else {
                     Line::from(msg.clone())
@@ -989,7 +666,7 @@ impl ShadowApp {
         }
         lines
     }
-
+    
     /// # render_input
     ///
     /// **Purpose:**
@@ -1023,7 +700,7 @@ impl ShadowApp {
         let input_text = if is_waiting {
             Text::from(vec![
                 Line::from(vec![
-                    Span::styled(" > ", Style::default().fg(Color::Rgb(255, 140, 0)).add_modifier(Modifier::BOLD)),
+                    Span::styled(" > ", Style::default().fg(GLOBAL_CONFIG.tui.border_color).add_modifier(Modifier::BOLD)),
                     Span::styled(format!("Shadow is thinking...{}", dots), Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
                 ])
             ])
@@ -1044,7 +721,7 @@ impl ShadowApp {
                 .map(|(idx, line)| {
                     if idx == 0 {
                         Line::from(vec![
-                            Span::styled(" > ", Style::default().fg(Color::Rgb(255, 140, 0))),
+                            Span::styled(" > ", Style::default().fg(GLOBAL_CONFIG.tui.user_message_color)),
                             Span::raw(line.to_string()),
                         ])
                     } else {
@@ -1060,12 +737,72 @@ impl ShadowApp {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Rgb(255, 140, 0)))
+                    .border_style(Style::default().fg(GLOBAL_CONFIG.tui.border_color))
                     .title(" Input "),
             )
             .style(Style::default().fg(Color::White));
 
         frame.render_widget(input_widget, area);
+    }
+    
+    /// # wrap_input_text
+    ///
+    /// **Purpose:**
+    /// Wraps the current input text to fit within the specified width (internal helper).
+    ///
+    /// **Parameters:**
+    /// - `width`: Maximum line width in characters
+    ///
+    /// **Returns:**
+    /// Vector of wrapped lines
+    fn wrap_input_text(&self, width: usize) -> Vec<String> {
+        if self.input.is_empty() {
+            return vec![String::new()];
+        }
+
+        let mut lines = Vec::new();
+        let mut current_line = String::new();
+
+        for word in self.input.split_inclusive(|c: char| c.is_whitespace()) {
+            if word.contains('\n') {
+                let parts: Vec<&str> = word.split('\n').collect();
+                for (i, part) in parts.iter().enumerate() {
+                    if i > 0 {
+                        lines.push(current_line.clone());
+                        current_line.clear();
+                    }
+                    if !part.is_empty() {
+                        let test_len = current_line.len() + part.len();
+                        if test_len > width && !current_line.is_empty() {
+                            lines.push(current_line.clone());
+                            current_line = part.to_string();
+                        } else {
+                            current_line.push_str(part);
+                        }
+                    }
+                }
+                continue;
+            }
+
+            let test_len = current_line.len() + word.len();
+
+            if test_len > width && !current_line.is_empty() {
+                lines.push(current_line.trim_end().to_string());
+                current_line = word.to_string();
+            } else {
+                current_line.push_str(word);
+            }
+        }
+
+        if !current_line.is_empty() {
+            lines.push(current_line);
+        }
+
+        if lines.is_empty() {
+            vec![String::new()]
+        } else {
+            lines
+        }
     }
 
     pub fn draw(&mut self, frame: &mut Frame<'_>) {
@@ -1159,132 +896,4 @@ impl ShadowApp {
         }
     }
 
-    /// # wrap_input_text
-    ///
-    /// **Purpose:**
-    /// Wraps the current input text to fit within the specified width (internal helper).
-    ///
-    /// **Parameters:**
-    /// - `width`: Maximum line width in characters
-    ///
-    /// **Returns:**
-    /// Vector of wrapped lines
-    fn wrap_input_text(&self, width: usize) -> Vec<String> {
-        if self.input.is_empty() {
-            return vec![String::new()];
-        }
-
-        let mut lines = Vec::new();
-        let mut current_line = String::new();
-
-        for word in self.input.split_inclusive(|c: char| c.is_whitespace()) {
-            if word.contains('\n') {
-                let parts: Vec<&str> = word.split('\n').collect();
-                for (i, part) in parts.iter().enumerate() {
-                    if i > 0 {
-                        lines.push(current_line.clone());
-                        current_line.clear();
-                    }
-                    if !part.is_empty() {
-                        let test_len = current_line.len() + part.len();
-                        if test_len > width && !current_line.is_empty() {
-                            lines.push(current_line.clone());
-                            current_line = part.to_string();
-                        } else {
-                            current_line.push_str(part);
-                        }
-                    }
-                }
-                continue;
-            }
-
-            let test_len = current_line.len() + word.len();
-
-            if test_len > width && !current_line.is_empty() {
-                lines.push(current_line.trim_end().to_string());
-                current_line = word.to_string();
-            } else {
-                current_line.push_str(word);
-            }
-        }
-
-        if !current_line.is_empty() {
-            lines.push(current_line);
-        }
-
-        if lines.is_empty() {
-            vec![String::new()]
-        } else {
-            lines
-        }
-    }
-}
-
-/// # render_message_section
-///
-/// **Purpose:**
-/// Standalone function to render a scrollable message section with borders and scrollbar.
-///
-/// **Parameters:**
-/// - `frame`: The ratatui frame to render into
-/// - `area`: The rectangular area to render the message section
-/// - `lines`: Vector of formatted lines to display
-/// - `title`: Title to display in the border
-/// - `scroll`: Mutable reference to scroll position (updated if out of bounds)
-///
-/// **Returns:**
-/// None (renders directly to frame)
-///
-/// **Details:**
-/// - Automatically bounds scroll position to valid range
-/// - Renders scrollbar with up/down arrows and position indicator
-/// - Applies text wrapping and orange border styling
-fn render_message_section(
-    frame: &mut Frame,
-    area: Rect,
-    lines: Vec<Line>,
-    title: &String,
-    scroll: &mut u16,
-) {
-    // Calculate content height and visible height
-    let content_height = lines.len() as u16;
-    let visible_height = area.height.saturating_sub(2);
-    let content_len = content_height as usize;
-    let viewport_len = visible_height as usize;
-
-    // Set scroll within bounds
-    let mut max_scroll = content_height.saturating_sub(visible_height);
-    *scroll = *scroll.min(&mut max_scroll);
-    if *scroll == u16::MAX || *scroll > max_scroll {
-        *scroll = max_scroll;
-    }
-    let mut scrollbar_state = ScrollbarState::default()
-        .content_length(content_len)
-        .viewport_content_length(viewport_len)
-        .position(*scroll as usize);
-    let scrollbar = Scrollbar::default()
-        .orientation(ScrollbarOrientation::VerticalRight)
-        .begin_symbol(Some("↑"))
-        .end_symbol(Some("↓"))
-        .track_symbol(Some("│"))
-        .thumb_symbol("█");
-
-    // Add all messages to 1 'text' for display
-    let text = Text::from(lines.clone());
-    // Set border and title styles
-    let paragraph = Paragraph::new(text)
-        .block(
-            Block::default()
-                .title(title.as_str())
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Rgb(255, 140, 0)))
-                .title_style(Style::default().fg(Color::Rgb(255, 165, 0)).add_modifier(Modifier::BOLD)),
-        )
-        .wrap(Wrap { trim: true })
-        .scroll((*scroll, 0));
-
-    // Render message area
-    frame.render_widget(paragraph, area);
-    // Add scrollbar to message area
-    frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
 }

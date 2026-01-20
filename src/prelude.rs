@@ -55,4 +55,5 @@ pub use crate::grok::agent::GrokConnection;
 pub use crate::user::user_input::UserInput;
 pub use crate::user::system_info::OsInfo;
 
-pub use crate::tui::tui::*;
+pub use crate::tui::{ShadowApp, AgentPane, MessageSource, UnifiedMessage};
+pub use crate::config::{AppConfig, GrokConfig, TuiConfig, HistoryConfig, GLOBAL_CONFIG};

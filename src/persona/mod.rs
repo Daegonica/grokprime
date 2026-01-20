@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::fs;
 use std::path::Path;
+use crate::prelude::*;
 
 /// # Persona
 ///
@@ -95,9 +96,9 @@ impl Persona {
 
 }
 
-fn default_true() -> bool { true }
-fn default_message_limit() -> usize { 12 }
-fn default_summary_threshold() -> usize { 20 }
+fn default_true() -> bool { GLOBAL_CONFIG.history.enabled }
+fn default_message_limit() -> usize { GLOBAL_CONFIG.history.messages_to_keep_after_summary }
+fn default_summary_threshold() -> usize { GLOBAL_CONFIG.history.max_messages_before_summary }
 
 /// # PersonaRef
 ///

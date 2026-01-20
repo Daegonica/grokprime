@@ -109,11 +109,11 @@ impl GrokConnection {
         }
 
         let request = ChatRequest {
-            model: "grok-4-fast".to_string(),
+            model: GLOBAL_CONFIG.grok.model_name.to_string(),
             input: Vec::new(),  // Start empty, populate in add_user_message
-            temperature: persona.temperature.unwrap_or(0.7),
+            temperature: persona.temperature.unwrap_or(GLOBAL_CONFIG.grok.default_temperature),
             previous_response_id: None,
-            stream: true,
+            stream: GLOBAL_CONFIG.grok.stream_enabled,
         };
 
         GrokConnection{
