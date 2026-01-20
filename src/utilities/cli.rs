@@ -46,6 +46,9 @@ pub struct Args {
 
     #[arg(long, conflicts_with = "tui")]
     pub cli: bool,
+
+    #[arg(long, default_value = "shadow")]
+    pub persona: String,
 }
 
 impl Args {

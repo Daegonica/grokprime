@@ -587,7 +587,7 @@ impl GrokConnection {
                             full_reply.push_str(&delta.delta);
                             
                             // Display incrementally for CLI
-                            if let Some(ref _output) = self.output {
+                            if self.output.is_some() || true {
                                 print!("{}", delta.delta);
                                 io::stdout().flush().ok();
                             }

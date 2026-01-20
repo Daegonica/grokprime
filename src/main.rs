@@ -20,7 +20,10 @@
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
 
-use grokprime_brain::prelude::*;
+use grokprime_brain::{
+    prelude::*,
+    commands::{from_input_action, CommandResult},
+};
 use clap::Parser;
 use crossterm::{
     event::{self, Event, KeyEventKind},
@@ -32,6 +35,7 @@ use std::sync::Arc;
 use ratatui::prelude::*;
 use std::io::stdout;
 use std::time::Duration;
+
 
 /// # main
 ///
@@ -55,10 +59,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.is_tui_mode() {
         run_tui_mode().await?;
     } else {
-        run_cli_mode().await?;
+        run_cli_mode(&args.persona).await?;
     }
 
     Ok(())
+}
+
+fn initialize_app(
+    persona_paths: Vec<&Path>,
+    default_persona: &str,
+    for_cli: bool,
+) -> anyhow::Result<ShadowApp> {
+    let mut app = ShadowApp::new();
+
+    log_info!("Loading personas from paths: {:?}", persona_paths);
+    app.load_personas(persona_paths)?;
+
+    if let Some(persona_ref) = app.personas.get(default_persona) {
+        let id = Uuid::new_v4();
+        app.add_agent(id, Arc::clone(persona_ref));
+        app.current_agent = Some(id);
+        log_info!("Added default agent: {}", default_persona);
+    } else {
+        anyhow::bail!("Persona '{}' not found!", default_persona);
+    }
+
+    let user_input = if for_cli {
+        UserInput::new(Some(Arc::new(CliOutput)))
+    } else {
+        UserInput::new_for_tui()
+    };
+    app.user_input = Some(user_input);
+
+    Ok(app)
 }
 
 
@@ -91,39 +124,21 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
-    log_info!("Switching to alternate screen");
 
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // TUI setup
-    log_info!("Setting up TUI application");
-    let mut app = ShadowApp::new();
     let persona_paths: Vec<&Path> = vec![
         Path::new("personas/shadow/shadow.yaml"), 
         Path::new("personas/friday/friday.yaml")
         ];
+    let mut app = initialize_app(persona_paths, "shadow", false)?;
     
-    log_info!("Adding personas from paths: {:?}", persona_paths);
-    app.load_personas(persona_paths).expect("Failed to load personas");
-    if let Some(persona_ref) = app.personas.get("shadow") {
-        let id = Uuid::new_v4();
-        app.add_agent(id, Arc::clone(persona_ref));
-        app.current_agent = Some(id);
-    } else {
-        eprintln!("Error: Shadow persona not found!");
-        std::process::exit(1);
-    }
-
-    let user_input = UserInput::new_for_tui();
-
-    app.user_input = Some(user_input);
     app.add_message("Welcome to Shadow (TUI Mode)");
     app.add_message("Press ESC to exit");
 
-    log_info!("Entering main event loop");
     loop {
         app.poll_channels();
-
         terminal.draw(|f| app.draw(f))?;
 
         if event::poll(Duration::from_millis(10))? {
@@ -138,11 +153,8 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     
-    log_info!("Exiting main event loop");
     disable_raw_mode()?;
     stdout().execute(LeaveAlternateScreen)?;
-    log_info!("Reverted to main screen");
-
     Ok(())
 }
 
@@ -169,71 +181,93 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 /// // Called when --cli flag is specified
 /// run_cli_mode().await?;
 /// ```
-async fn run_cli_mode() -> Result<(), Box<dyn std::error::Error>> {
-    let output: SharedOutput = Arc::new(CliOutput);
+async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
+    log_init("Shadow", Some("shadow.log"), OutputTarget::LogFile)?;
+    log_info!("Starting Shadow in TUI mode");
 
-    let mut user_input = UserInput::new(Some(Arc::clone(&output)));
-    let persona = Persona::from_yaml_file(Path::new("personas/shadow.yaml"))
-        .expect("Failed to load shadow persona");
-    let mut shadow = GrokConnection::new(output.clone(), Arc::new(persona));
-    let twitter = TwitterConnection::new(Arc::clone(&output));
+    let persona_paths = vec![Path::new("personas/shadow/shadow.yaml")];
+    let mut app = initialize_app(persona_paths, persona, true)?;
 
     println!("Welcome to Shadow (CLI Mode)");
     println!("Type 'quit' or 'exit' to leave");
-    println!();
 
     loop {
+
+        let user_input = app.user_input.as_mut().unwrap();
 
         match user_input.read_user_input()? {
             Some(raw_input) => {
                 match user_input.process_input(&raw_input) {
-                    InputAction::Quit => {
-                        println!("Shadow retreats into the darkness...");
-                        break;
-                    }
-                    InputAction::SendAsMessage(content) => {
-                        shadow.add_user_message(&content);
-                        if let Err(e) = shadow.handle_response().await {
-                            eprintln!("Error: {}", e);
-                        }
-                    }
-                    InputAction::PostTweet(tweet_text) => {
-                        match twitter.post_tweet(&tweet_text).await {
-                            Ok(_) => println!("✓ Tweet posted!"),
-                            Err(e) => eprintln!("✗ Failed: {}", e),
-                        }
-                    }
-                    InputAction::DraftTweet(idea) => {
-                        let prompt = format!(
-                            "Generate a tweet based on this idea: '{}'. \
-                            Keep it under 280 characters. Return ONLY the tweet text, \
-                            speak as me, but sprinkle in some fourth wall breaking of your own choosing.",
-                            idea
-                        );
-                        
-                        shadow.add_user_message(&prompt);
-                        if let Err(e) = shadow.handle_response().await {
-                            eprintln!("Error: {}", e);
-                        } else {
-                            println!("\nTo post, type: tweet <approved text>");
-                        }
-                    }
+                    InputAction::DoNothing => {},
                     InputAction::ContinueNoSend(msg) => {
                         println!("{}", msg);
                     }
-                    InputAction::DoNothing => {
-                        continue;
+
+                    InputAction::SendAsMessage(content) => {
+                        if let Some(pane) = app.current_pane_mut() {
+                            pane.add_message(format!("> {}", content));
+                            pane.connection.add_user_message(&content);
+                            
+                            let msg_count_before = pane.messages.len();
+
+                            println!("Shadow is thinking...\n");
+                            
+                            if let Err(e) = pane.connection.handle_response().await {
+                                eprintln!("Error: {}", e);
+                                continue;
+                            }
+
+                            loop {
+                                tokio::time::sleep(Duration::from_millis(50)).await;
+
+                                app.poll_channels();
+
+                                if let Some(pane) = app.current_pane() {
+                                    if pane.messages.len() > msg_count_before {
+                                        if let Some(last_msg) = pane.messages.back() {
+                                            if !last_msg.starts_with('>') {
+                                                print!("\r{}", last_msg);
+                                                std::io::stdout().flush().unwrap();
+                                            }
+                                        }
+                                    }
+
+                                    if !pane.is_waiting {
+                                        println!("\n");
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            println!("No active agent!");
+                        }
                     }
 
-                    
-                   InputAction::HistoryInfo | InputAction::SaveHistory | InputAction::Summarize | InputAction::ClearHistory | InputAction::NewAgent(_) | InputAction::CloseAgent | InputAction::ListAgents | InputAction::AgentStatus => todo!(),
+
+                    action => {
+                        let command = from_input_action(action);
+                        let result = command.execute(&mut app);
+
+                        match result {
+                            CommandResult::Continue => {},
+                            CommandResult::Shutdown => {
+                                println!("Shadow retreats into the darkness...");
+                                break;
+                            }
+                            CommandResult::Error(msg) => {
+                                eprintln!("Error: {}", msg);
+                            }
+                        }
+                    }
                 }
             }
             None => continue,
         }
     }
     
-    let _ = shadow.save_history("conversation_history.json");
+    if let Some(pane) = app.current_pane_mut() {
+        let _ = pane.connection.save_persona_history();
+    }
 
     Ok(())
 }

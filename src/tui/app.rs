@@ -38,7 +38,7 @@ use ratatui::{
 use crate::prelude::*;
 use crate::tui::agent_pane::AgentPane;
 use crate::tui::widgets::render_message_section;
-use crate::tui::command_handler;
+use crate::commands::{from_input_action, CommandResult};
 
 /// # UnifiedMessage
 ///
@@ -285,7 +285,7 @@ impl ShadowApp {
     ///
     /// **Returns:**
     /// `Option<&AgentPane>` - Reference to current pane, or None if no agent selected
-    fn current_pane(&self) -> Option<&AgentPane> {
+    pub fn current_pane(&self) -> Option<&AgentPane> {
         self.current_agent.and_then(|id| self.agents.get(&id))
     }
 
@@ -531,43 +531,28 @@ impl ShadowApp {
         };
 
         match user_input.process_input(&line) {
+            // Special cases that don't use the Command Pattern
             InputAction::DoNothing => {},
             InputAction::ContinueNoSend(msg) => {
                 self.add_message(msg);
             }
-            InputAction::Quit => {
-                return true;
-            }
-            InputAction::SendAsMessage(content) => {
-                command_handler::handle_send_message(self, content);
-            }
-            InputAction::SaveHistory => {
-                command_handler::handle_save_history(self);
-            }
-            InputAction::Summarize => {
-                command_handler::handle_summarize(self);
-            }
-            InputAction::HistoryInfo => {
-                command_handler::handle_history_info(self);
-            }
-            InputAction::ClearHistory => {
-                command_handler::handle_clear_history(self);
-            }
-            InputAction::NewAgent(persona_name) => {
-                command_handler::handle_new_agent(self, persona_name);
-            }
-            InputAction::CloseAgent => {
-                command_handler::handle_close_agent(self);
-            }
-            InputAction::AgentStatus => {
-                command_handler::handle_agent_status(self);
-            }
-            InputAction::ListAgents => {
-                let personas = vec!["shadow"];
-                self.add_message(format!("Available personas: {}", personas.join(", ")));
-            }
-            InputAction::PostTweet(_) | InputAction::DraftTweet(_) => {
-                self.add_message("Twitter commands not yet implemented in TUI mode.");
+            
+            // All other actions use the Command Pattern
+            action => {
+                // Convert the InputAction into a Command object
+                let command = from_input_action(action);
+                
+                // Execute the command and get the result
+                let result = command.execute(self);
+                
+                // Handle the command result
+                match result {
+                    CommandResult::Continue => {},     // Keep running
+                    CommandResult::Shutdown => return true,  // Exit application
+                    CommandResult::Error(msg) => {
+                        self.add_message(format!("Error: {}", msg));
+                    }
+                }
             }
         }
 
