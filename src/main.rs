@@ -35,6 +35,7 @@ use std::sync::Arc;
 use ratatui::prelude::*;
 use std::io::stdout;
 use std::time::Duration;
+use grokprime_brain::persona::discover_personas;
 
 
 /// # main
@@ -128,10 +129,11 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // TUI setup
-    let persona_paths: Vec<&Path> = vec![
-        Path::new("personas/shadow/shadow.yaml"), 
-        Path::new("personas/friday/friday.yaml")
-        ];
+    let personas = discover_personas()?;
+    let persona_paths: Vec<&Path> = personas.iter()
+        .map(|(_, path_buf)| path_buf.as_path())
+        .collect();
+    
     let mut app = initialize_app(persona_paths, "shadow", false)?;
     
     app.add_message("Welcome to Shadow (TUI Mode)");
@@ -184,8 +186,11 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
     log_init("Shadow", Some("logs/shadow.log"), OutputTarget::LogFile)?;
     log_info!("Starting Shadow in TUI mode");
-
-    let persona_paths = vec![Path::new("personas/shadow/shadow.yaml"), Path::new("personas/friday/friday.yaml")];
+    
+    let personas = discover_personas()?;
+    let persona_paths: Vec<&Path> = personas.iter()
+        .map(|(_, path_buf)| path_buf.as_path())
+        .collect();
     let mut app = initialize_app(persona_paths, persona, true)?;
 
     println!("Welcome to Shadow (CLI Mode)");

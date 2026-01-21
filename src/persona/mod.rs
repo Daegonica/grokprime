@@ -23,7 +23,8 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use walkdir::WalkDir;
 use crate::prelude::*;
 
 /// # Persona
@@ -116,3 +117,66 @@ pub mod agent_registry;
 
 pub use agents::*;
 pub use agent_registry::*;
+
+
+/// Discover all available personas by scanning the personas directory
+///
+/// # How it works
+/// - Walks through `personas/` directory recursively
+/// - Finds all `.yaml` files
+/// - Extracts persona name from directory structure
+///
+/// # Returns
+/// Vector of (persona_name, yaml_path) tuples
+///
+/// # Example
+/// ```
+/// personas/
+///   shadow/
+///     shadow.yaml      -> ("shadow", "personas/shadow/shadow.yaml")
+///   friday/
+///     friday.yaml      -> ("friday", "personas/friday/friday.yaml")
+///   custom/
+///     my_persona.yaml  -> ("custom/my_persona", "personas/custom/my_persona.yaml")
+/// ```
+pub fn discover_personas() -> Result<Vec<(String, PathBuf)>, ShadowError> {
+    let personas_dir = "personas";
+    let mut found_personas = Vec::new();
+
+    if !std::path::Path::new(personas_dir).exists() {
+        return Err(ShadowError::IoError("personas/ directory not found".to_string()));
+    }
+
+    for entry in WalkDir::new(personas_dir)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+
+        if path.extension().and_then(|s| s.to_str()) == Some("yaml") {
+            if let Some(parent) = path.parent() {
+                if let Some(dir_name) = parent.file_name() {
+                    let persona_name = dir_name.to_string_lossy().to_string();
+                    found_personas.push((persona_name, path.to_path_buf()));
+                }
+            }
+        }
+    }
+
+    found_personas.sort_by(|a, b| a.0.cmp(&b.0));
+
+    Ok(found_personas)
+}
+
+pub fn get_default_persona() -> Result<String, ShadowError> {
+    let personas = discover_personas()?;
+
+    if personas.iter().any(|(name, _)| name == "shadow") {
+        return Ok("shadow".to_string());
+    }
+
+    personas.first()
+        .map(|(name, _)| name.clone())
+        .ok_or(ShadowError::IoError("No personas found".to_string()))
+}

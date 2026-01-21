@@ -1,0 +1,17 @@
+{
+  "persona_name": "viral",
+  "summary": null,
+  "recent_messages": [
+    {
+      "role": "user",
+      "content": "Hello Viral"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! What's on your mind—crafting a thread, brainstorming dev content, or something else? Let's make it go viral. 🚀"
+    }
+  ],
+  "total_message_count": 2,
+  "last_updated": "2026-01-21T05:39:00.714850900+00:00",
+  "summarization_count": 0
+}
