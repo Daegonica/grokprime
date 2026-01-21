@@ -112,10 +112,8 @@ fn default_summary_threshold() -> usize { GLOBAL_CONFIG.history.max_messages_bef
 /// ```
 pub type PersonaRef = Arc<Persona>;
 
-pub mod agents;
 pub mod agent_registry;
 
-pub use agents::*;
 pub use agent_registry::*;
 
 

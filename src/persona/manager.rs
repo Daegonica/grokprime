@@ -211,7 +211,7 @@ impl PersonaManager {
             }
         })?;
         watcher.watch(&self.dir, RecursiveMode::NonRecursive)?;
-        *self._watcher.lock().unwrap() =Some(watcher);
+        *self._watcher.lock().unwrap() = Some(watcher);
         Ok(())
     }
 }

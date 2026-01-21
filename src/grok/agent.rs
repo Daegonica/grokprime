@@ -391,4 +391,6 @@ impl GrokConnection {
 
         Ok(())
     }
+
 }
+            

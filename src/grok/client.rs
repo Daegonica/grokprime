@@ -12,7 +12,7 @@
 //! - Send chat requests to Grok endpoint
 //! - Stream responses via Server-Sent Events (SSE)
 //! - Parse response chunks into structured data
-//! - Handle API errors and status codes
+//! - Handle API Errors and status codes
 //!
 //! **Author:** Daegonica Software
 //! **Version:** 0.1.0
@@ -97,10 +97,10 @@ impl GrokClient {
     /// - `full_text`: Complete assembled response text
     ///
     /// **Errors / Failures:**
-    /// - Network errors
+    /// - Network Errors
     /// - API authentication failures
-    /// - HTTP status errors (non-2xx)
-    /// - JSON parsing errors
+    /// - HTTP status Errors (non-2xx)
+    /// - JSON parsing Errors
     /// - Channel send failures
     ///
     /// **Examples:**
@@ -156,6 +156,7 @@ impl GrokClient {
 
                     if let Ok(complete) = serde_json::from_str::<CompletedChunk>(data) {
                         if complete.type_ == "response.completed" {
+                            // log_info!("FULL RESPONSE DATA: {}", data);
                             log_info!("Received completion: {}", complete.response.id);
                             response_id = Some(complete.response.id.clone());
                         }
