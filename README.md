@@ -246,9 +246,9 @@ MIT License - Use freely for personal or commercial projects
 
 ## 🔗 Links
 
-- **GitHub**: [grokprime-brain](https://github.com/yourusername/grokprime-brain)
-- **Issues**: [Report bugs or request features](https://github.com/yourusername/grokprime-brain/issues)
-- **Developer**: [Your Twitter/X](https://twitter.com/yourusername)
+- **GitHub**: [grokprime-brain](https://github.com/Daegonica/grokprime-brain)
+- **Issues**: [Report bugs or request features](https://github.com/Daegonica/grokprime-brain/issues)
+- **Developer**: [Your Twitter/X](https://twitter.com/Daegon89)
 
 ---
 
