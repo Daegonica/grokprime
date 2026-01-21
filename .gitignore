@@ -1,6 +1,6 @@
 /target
 /conversation_history.json
 /.env
-/personas
 /personas/*.yaml
-/logs
+/logs/*.log
+/IMPLEMENTATION_ROADMAP.md
