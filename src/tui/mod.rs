@@ -23,7 +23,6 @@
 // Module declarations
 pub mod agent_pane;
 pub mod app;
-pub mod command_handler;
 pub mod widgets;
 
 // Re-exports for public API

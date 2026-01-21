@@ -158,7 +158,7 @@ impl Command for SaveHistoryCommand {
         };
 
         let result = pane.connection.save_persona_history();
-        let persona_name = pane.connection.persona.name.clone();
+        let persona_name = pane.connection.conversation.persona.name.clone();
 
         match result {
             Ok(_) => {
@@ -195,10 +195,10 @@ impl Command for HistoryInfoCommand {
             return CommandResult::Continue;
         };
 
-        let msg_count = pane.connection.local_history.len();
-        let has_summary = pane.connection.local_history.iter()
+        let msg_count = pane.connection.conversation.local_history.len();
+        let has_summary = pane.connection.conversation.local_history.iter()
             .any(|m| m.content.contains("[Previous conversation summary:"));
-        let persona_name = pane.connection.persona.name.clone();
+        let persona_name = pane.connection.conversation.persona.name.clone();
 
         log_info!("{}: {} messages, Summary present: {}", persona_name, msg_count, has_summary);
         app.add_message(format!(
@@ -230,7 +230,7 @@ impl Command for ClearHistoryCommand {
             return CommandResult::Continue;
         };
 
-        let persona_name = pane.connection.persona.name.clone();
+        let persona_name = pane.connection.conversation.persona.name.clone();
         let path = format!("history/{}_history.json", &persona_name);
         let result = std::fs::remove_file(&path);
 

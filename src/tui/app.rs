@@ -340,11 +340,10 @@ impl ShadowApp {
                     StreamChunk::Complete{response_id, full_reply} => {
                         pane.connection.set_last_response_id(response_id.clone());
 
-                        pane.connection.local_history.push(Message {
+                        pane.connection.conversation.local_history.push(Message {
                             role: "assistant".to_string(),
                             content: full_reply,
                         });
-                        pane.connection.clear_request_input();
 
                         pane.is_waiting = false;
                         pane.active_task = None;

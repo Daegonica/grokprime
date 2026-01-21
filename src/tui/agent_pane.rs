@@ -22,6 +22,7 @@
 //! ---------------------------------------------------------------
 
 use std::collections::VecDeque;
+use crate::grok::agent::GrokConnection;
 use uuid::Uuid;
 use crate::prelude::*;
 

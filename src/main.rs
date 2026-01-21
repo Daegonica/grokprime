@@ -119,7 +119,7 @@ fn initialize_app(
 /// run_tui_mode().await?;
 /// ```
 async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
-    log_init("Shadow", Some("shadow.log"), OutputTarget::LogFile)?;
+    log_init("Shadow", Some("logs/shadow.log"), OutputTarget::LogFile)?;
     log_info!("Starting Shadow in TUI mode");
 
     enable_raw_mode()?;
@@ -182,10 +182,10 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 /// run_cli_mode().await?;
 /// ```
 async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
-    log_init("Shadow", Some("shadow.log"), OutputTarget::LogFile)?;
+    log_init("Shadow", Some("logs/shadow.log"), OutputTarget::LogFile)?;
     log_info!("Starting Shadow in TUI mode");
 
-    let persona_paths = vec![Path::new("personas/shadow/shadow.yaml")];
+    let persona_paths = vec![Path::new("personas/shadow/shadow.yaml"), Path::new("personas/friday/friday.yaml")];
     let mut app = initialize_app(persona_paths, persona, true)?;
 
     println!("Welcome to Shadow (CLI Mode)");

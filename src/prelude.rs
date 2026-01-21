@@ -50,7 +50,9 @@ pub use crate::utilities::cli::Args;
 pub use crate::twitter::*;
 pub use crate::persona::{Persona, PersonaRef};
 
-pub use crate::grok::agent::GrokConnection;
+pub use crate::grok::conversations::GrokConversation;
+pub use crate::grok::client::{GrokClient, StreamResponse};
+pub use crate::grok::history::HistoryManager;
 
 pub use crate::user::user_input::UserInput;
 pub use crate::user::system_info::OsInfo;

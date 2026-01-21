@@ -3,4 +3,4 @@
 /.env
 /personas
 /personas/*.yaml
-/*.log
+/logs
