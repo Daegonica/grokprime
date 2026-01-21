@@ -46,6 +46,7 @@ pub use crate::utilities::outputs::{
     CliOutput,
 };
 pub use crate::utilities::cli::Args;
+pub use crate::errors::ShadowError;
 
 pub use crate::twitter::*;
 pub use crate::persona::{Persona, PersonaRef};

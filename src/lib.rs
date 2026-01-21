@@ -29,6 +29,7 @@ pub mod persona;
 pub mod prelude;
 pub mod config;
 pub mod commands;
+pub mod errors;
 
 pub fn capitalize_first(s: &str) -> String {
     let mut chars = s.chars();
