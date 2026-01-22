@@ -24,6 +24,7 @@
 
 use futures_util::StreamExt;
 use crate::prelude::*;
+use crate::llm::{LlmClient, StreamResponse};
 
 /// # GrokClient
 ///
@@ -43,11 +44,6 @@ use crate::prelude::*;
 pub struct GrokClient {
     api_key: String,
     client: Client,
-}
-
-pub struct StreamResponse {
-    pub response_id: String,
-    pub full_text: String,
 }
 
 impl GrokClient {
@@ -260,5 +256,25 @@ impl GrokClient {
         })
     }
 
+}
 
+use async_trait::async_trait;
+
+#[async_trait]
+impl LlmClient for GrokClient {
+    async fn send_streaming(
+        &self,
+        request: &ChatRequest,
+        tx: mpsc::UnboundedSender<StreamChunk>,
+    ) -> Result<StreamResponse, Box<dyn std::error::Error>> {
+        self.send_streaming_request(request, tx).await
+    }
+
+    async fn send_blocking(
+        &self,
+        request: &ChatRequest,
+        print_stream: bool,
+    ) -> Result<StreamResponse, Box<dyn std::error::Error>> {
+        self.send_blocking_request(request, print_stream).await
+    }
 }

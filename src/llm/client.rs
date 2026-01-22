@@ -1,54 +1,32 @@
-//! # Daegonica Module: grok::agent
+//! # Daegonica Module: llm::client
 //!
-//! **Purpose:** High-level coordinator for Grok API interactions
+//! **Purpose:** Generic LLM connection coordinator
 //!
 //! **Context:**
-//! - Thin wrapper that coordinates client, conversation, and history modules
-//! - Maintains backward compatibility with existing code
-//! - Used by both TUI and CLI modes
+//! - Works with ANY client that implements LlmClient trait
+//! - Replaces specific GrokConnection/ClaudeConnection
 //!
 //! **Responsibilities:**
-//! - Coordinate between GrokClient, GrokConversation, and HistoryManager
-//! - Provide simple API for sending messages and getting responses
-//! - Handle conversation persistence automatically
-//! - Manage summarization workflow
+//! - Coordinate between client, conversation, and history
+//! - Provide unified API for all LLM backends
 //!
 //! **Author:** Daegonica Software
 //! **Version:** 0.1.0
-//! **Last Updated:** 2026-01-20
-//!
-//! ---------------------------------------------------------------
-//! This file is part of the Daegonica Software codebase.
-//! ---------------------------------------------------------------
+//! **Last Updated:** 2026-01-21
 
 use crate::prelude::*;
+use crate::llm::LlmClient;
 use std::path::Path;
 
-/// # GrokConnection
-///
-/// **Summary:**
-/// High-level coordinator for Grok API interactions.
-///
-/// **Fields:**
-/// - `client`: HTTP client for API communication
-/// - `conversation`: In-memory conversation state
-/// - `output`: Optional output handler for CLI mode
-///
-/// **Usage Example:**
-/// ```rust
-/// let persona = Arc::new(persona_config);
-/// let mut shadow = GrokConnection::new_without_output(persona);
-/// shadow.add_user_message("Hello!");
-/// shadow.handle_response_streaming(tx).await?;
-/// ```
+/// Generic LLM connection that works with ANY client
 #[derive(Debug, Clone)]
-pub struct GrokConnection {
-    client: GrokClient,
+pub struct Connection<T: LlmClient> {
+    client: T,
     pub conversation: GrokConversation,
     output: Option<SharedOutput>,
 }
 
-impl GrokConnection {
+impl<T: LlmClient> Connection<T> {
     /// # new_without_output
     ///
     /// **Purpose:**
@@ -69,8 +47,7 @@ impl GrokConnection {
     /// let persona = Arc::new(persona_config);
     /// let connection = GrokConnection::new_without_output(persona);
     /// ```
-    pub fn new_without_output(persona: Arc<Persona>) -> Self {
-        let client = GrokClient::new().expect("Failed to initialize GrokClient");
+    pub fn new_without_output(client: T, persona: Arc<Persona>) -> Self {
 
         let conversation = if persona.enable_history {
             if let Ok(loaded_history) = HistoryManager::load_persona_history(&persona.name) {
@@ -87,7 +64,7 @@ impl GrokConnection {
             GrokConversation::new(persona)
         };
 
-        GrokConnection {
+        Connection {
             client,
             conversation,
             output: None,
@@ -110,8 +87,8 @@ impl GrokConnection {
     /// ```rust
     /// let shadow = GrokConnection::new(Arc::new(CliOutput), persona);
     /// ```
-    pub fn new(output: SharedOutput, persona: Arc<Persona>) -> Self {
-        let mut conn = Self::new_without_output(persona);
+    pub fn new(client: T,output: SharedOutput, persona: Arc<Persona>) -> Self {
+        let mut conn = Self::new_without_output(client, persona);
         conn.output = Some(output);
         conn
     }
@@ -240,7 +217,7 @@ impl GrokConnection {
 
         let request = self.conversation.build_request();
 
-        let response = self.client.send_streaming_request(&request, tx.clone()).await?;
+        let response = self.client.send_streaming(&request, tx.clone()).await?;
 
         self.conversation.add_assistant_message(response.full_text);
         self.conversation.set_last_response_id(response.response_id.clone());
@@ -288,7 +265,7 @@ impl GrokConnection {
         let request = self.conversation.build_request();
 
         let print_stream = true;
-        let response = self.client.send_blocking_request(&request, print_stream).await?;
+        let response = self.client.send_blocking(&request, print_stream).await?;
 
         self.conversation.add_assistant_message(response.full_text);
         self.conversation.set_last_response_id(response.response_id);
@@ -364,7 +341,7 @@ impl GrokConnection {
         };
 
         let (tx, mut rx) = mpsc::unbounded_channel();
-        let response = self.client.send_streaming_request(&summary_request, tx).await?;
+        let response = self.client.send_streaming(&summary_request, tx).await?;
 
         while rx.recv().await.is_some() {}
 

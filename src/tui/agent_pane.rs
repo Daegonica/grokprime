@@ -22,9 +22,14 @@
 //! ---------------------------------------------------------------
 
 use std::collections::VecDeque;
-use crate::grok::agent::GrokConnection;
 use uuid::Uuid;
 use crate::prelude::*;
+use crate::llm::client::Connection;
+use crate::claude::client::ClaudeClient;
+use crate::grok::client::GrokClient;
+use crate::llm::AnyClient;
+
+type DynamicConnection = Connection<AnyClient>;
 
 
 /// # AgentPane
@@ -58,7 +63,7 @@ use crate::prelude::*;
 pub struct AgentPane {
     pub id: Uuid,
     pub persona_name: String,
-    pub connection: GrokConnection,
+    pub connection: DynamicConnection,
     pub messages: VecDeque<String>,
     pub input: String,
     pub scroll: u16,
@@ -92,12 +97,16 @@ impl AgentPane {
     /// - None (infallible)
     pub fn new(id: Uuid, persona: PersonaRef) -> Self {
 
+        let client = match persona.api_provider.as_str() {
+            "claude" => AnyClient::Claude(ClaudeClient::new().expect("Faild to init Claude.")),
+            _ => AnyClient::Grok(GrokClient::new().expect("Failed to init Grok.")),
+        };
         let (tx, rx) = mpsc::unbounded_channel();
         
         Self {
             id,
             persona_name: persona.name.clone(),
-            connection: GrokConnection::new_without_output(persona),
+            connection: Connection::new_without_output(client, persona),
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,

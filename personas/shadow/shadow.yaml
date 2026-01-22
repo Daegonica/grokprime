@@ -46,3 +46,4 @@ tools:
 enable_history: true
 history_message_limit: 12
 summary_threshold: 20
+api_provider: "grok"

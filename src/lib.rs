@@ -21,6 +21,7 @@
 
 pub mod models;
 pub mod grok;
+pub mod agent_history;
 pub mod user;
 pub mod tui;
 pub mod utilities;
@@ -30,6 +31,8 @@ pub mod prelude;
 pub mod config;
 pub mod commands;
 pub mod errors;
+pub mod llm;
+pub mod claude;
 
 pub fn capitalize_first(s: &str) -> String {
     let mut chars = s.chars();

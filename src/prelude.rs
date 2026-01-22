@@ -51,9 +51,15 @@ pub use crate::errors::ShadowError;
 pub use crate::twitter::*;
 pub use crate::persona::{Persona, PersonaRef};
 
-pub use crate::grok::conversations::GrokConversation;
-pub use crate::grok::client::{GrokClient, StreamResponse};
-pub use crate::grok::history::HistoryManager;
+pub use crate::grok::client::GrokClient;
+
+pub use crate::llm::client::Connection;
+pub use crate::llm::{LlmClient, StreamResponse};
+
+pub use crate::claude::client::ClaudeClient;
+
+pub use crate::agent_history::conversations::GrokConversation;
+pub use crate::agent_history::history::HistoryManager;
 
 pub use crate::user::user_input::UserInput;
 pub use crate::user::system_info::OsInfo;

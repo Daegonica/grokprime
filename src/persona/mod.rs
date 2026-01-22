@@ -66,6 +66,9 @@ pub struct Persona {
 
     #[serde(default = "default_summary_threshold")]
     pub summary_threshold: usize,
+
+    #[serde(default = "default_api_provider")]
+    pub api_provider: String,
 }
 
 impl Persona {
@@ -100,6 +103,7 @@ impl Persona {
 fn default_true() -> bool { GLOBAL_CONFIG.history.enabled }
 fn default_message_limit() -> usize { GLOBAL_CONFIG.history.messages_to_keep_after_summary }
 fn default_summary_threshold() -> usize { GLOBAL_CONFIG.history.max_messages_before_summary }
+fn default_api_provider() -> String { "grok".to_string() }
 
 /// # PersonaRef
 ///

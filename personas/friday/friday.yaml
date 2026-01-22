@@ -68,3 +68,4 @@ tools:
 enable_history: true
 history_message_limit: 15
 summary_threshold: 25
+api_provider: "claude"

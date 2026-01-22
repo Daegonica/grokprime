@@ -34,3 +34,4 @@ temperature: 0.3
 enable_history: false
 history_message_limit: 0
 summary_threshold: 999999
+api_provider: "grok"
