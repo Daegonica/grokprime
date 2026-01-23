@@ -122,7 +122,6 @@ impl GrokConversation {
     /// conversation.add_user_message("What is Rust?");
     /// ```
     pub fn add_user_message(&mut self, content: &str) {
-        log_info!("Adding user message: {}", content);
 
         let new_msg = Message {
             role: "user".to_string(),
@@ -148,7 +147,6 @@ impl GrokConversation {
     /// conversation.add_assistant_message(response.full_text);
     /// ```
     pub fn add_assistant_message(&mut self, content: String) {
-        log_info!("Adding assistant message ({} chars)", content.len());
 
         let msg = Message {
             role: "assistant".to_string(),
@@ -169,7 +167,6 @@ impl GrokConversation {
     /// **Returns:**
     /// None (mutates last_response_id)
     pub fn set_last_response_id(&mut self, id: String) {
-        log_info!("Setting last response ID: {}", id);
         self.last_response_id = Some(id);
     }
 

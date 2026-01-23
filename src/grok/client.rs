@@ -109,7 +109,6 @@ impl GrokClient {
         request: &ChatRequest,
         tx: mpsc::UnboundedSender<StreamChunk>,
     ) -> Result<StreamResponse, Box<dyn std::error::Error>> {
-        log_info!("Sending streaming request to Grok API");
 
         let response = self.client
             .post("https://api.x.ai/v1/responses")
@@ -127,7 +126,6 @@ impl GrokClient {
             return Err(format!("API error: {}", status).into());
         }
 
-        log_info!("API response received, streaming chunks...");
 
         let mut stream = response.bytes_stream();
         let mut full_reply = String::new();
@@ -152,8 +150,6 @@ impl GrokClient {
 
                     if let Ok(complete) = serde_json::from_str::<CompletedChunk>(data) {
                         if complete.type_ == "response.completed" {
-                            // log_info!("FULL RESPONSE DATA: {}", data);
-                            log_info!("Received completion: {}", complete.response.id);
                             response_id = Some(complete.response.id.clone());
                         }
                     }
@@ -161,7 +157,6 @@ impl GrokClient {
             }
         }
 
-        log_info!("Stream ended. Response ID: {:?}, Length: {}", response_id, full_reply.len());
 
         Ok(StreamResponse {
             response_id: response_id.ok_or("No response ID received")?,
@@ -191,7 +186,6 @@ impl GrokClient {
         request: &ChatRequest,
         print_stream: bool,
     ) -> Result<StreamResponse, Box<dyn std::error::Error>> {
-        log_info!("Sending blocking request to Grok API");
 
         let response = self.client
             .post("https://api.x.ai/v1/responses")

@@ -67,6 +67,7 @@ pub struct AgentPane {
     pub messages: VecDeque<String>,
     pub input: String,
     pub scroll: u16,
+    pub auto_scroll: bool,  // true = follow new messages, false = user scrolled up
     pub max_history: usize,
     pub is_waiting: bool,
     pub input_scroll: usize,
@@ -110,6 +111,7 @@ impl AgentPane {
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,
+            auto_scroll: true,  // Start following new messages
             max_history: 1000,
             is_waiting: false,
             input_scroll: 0,
@@ -132,9 +134,12 @@ impl AgentPane {
     /// **Returns:**
     /// None (mutates internal state)
     pub fn add_message(&mut self, msg: impl Into<String>) {
-        let msg = msg.into();
-        self.messages.push_back(msg.clone());
-        self.scroll_to_bottom();
+        
+        self.messages.push_back(msg.into());
+
+        if self.auto_scroll {
+            self.scroll_to_bottom();
+        }
     }
 
     /// # scroll_to_bottom
@@ -148,7 +153,8 @@ impl AgentPane {
     /// **Returns:**
     /// None (mutates scroll state)
     pub fn scroll_to_bottom(&mut self) {
-        self.scroll = u16::MAX;
+        self.scroll = u16::MAX;  // Will be clamped to actual max by render
+        self.auto_scroll = true;   // Re-enable auto-scroll
     }
 
     /// # wrap_input_text

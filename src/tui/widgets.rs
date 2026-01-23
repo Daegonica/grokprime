@@ -28,7 +28,6 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
     Frame,
 };
-
 /// # render_message_section
 ///
 /// **Purpose:**
@@ -42,7 +41,7 @@ use ratatui::{
 /// - `scroll`: Mutable reference to scroll position (updated if out of bounds)
 ///
 /// **Returns:**
-/// None (renders directly to frame)
+/// `bool` - true if scroll is at the actual bottom after clamping, false otherwise
 ///
 /// **Details:**
 /// - Automatically bounds scroll position to valid range
@@ -54,29 +53,28 @@ pub fn render_message_section(
     lines: Vec<Line>,
     title: &String,
     scroll: &mut u16,
-) {
-    // Calculate content height and visible height
-    let content_height = lines.len() as u16;
+) -> bool {
+
     let visible_height = area.height.saturating_sub(2);
+    let content_height = lines.len() as u16;
     let content_len = content_height as usize;
     let viewport_len = visible_height as usize;
 
     // Set scroll within bounds
-    let mut max_scroll = content_height.saturating_sub(visible_height);
-    *scroll = *scroll.min(&mut max_scroll);
+    let max_scroll = content_height.saturating_sub(visible_height);
     if *scroll == u16::MAX || *scroll > max_scroll {
         *scroll = max_scroll;
     }
-    let mut scrollbar_state = ScrollbarState::default()
-        .content_length(content_len)
-        .viewport_content_length(viewport_len)
-        .position(*scroll as usize);
-    let scrollbar = Scrollbar::default()
-        .orientation(ScrollbarOrientation::VerticalRight)
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
         .begin_symbol(Some("↑"))
         .end_symbol(Some("↓"))
         .track_symbol(Some("│"))
         .thumb_symbol("█");
+
+
+    let mut scrollbar_state = ScrollbarState::new(content_len)
+        .viewport_content_length(viewport_len)
+        .position(*scroll as usize);
 
     // Add all messages to 1 'text' for display
     let text = Text::from(lines.clone());
@@ -96,5 +94,8 @@ pub fn render_message_section(
     frame.render_widget(paragraph, area);
     // Add scrollbar to message area
     frame.render_stateful_widget(scrollbar, area, &mut scrollbar_state);
+    
+    // Return whether we're at the actual bottom
+    *scroll >= max_scroll
 }
 

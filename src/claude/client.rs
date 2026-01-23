@@ -79,7 +79,6 @@ impl LlmClient for ClaudeClient {
         request: &ChatRequest,
         tx: mpsc::UnboundedSender<StreamChunk>,
     ) -> Result<StreamResponse, Box<dyn std::error::Error>> {
-        log_info!("Sending streaming request to Claude API");
 
         let claude_request = self.adapt_request(request);
 
@@ -101,7 +100,6 @@ impl LlmClient for ClaudeClient {
             return Err(format!("API error: {}", status).into());
         }
 
-        log_info!("Claude API response received streaming chunks..");
 
         let mut stream = response.bytes_stream();
         let mut full_reply = String::new();
@@ -119,7 +117,6 @@ impl LlmClient for ClaudeClient {
                 if let Some(data) = line.strip_prefix("data: ") {
                     if let Ok(msg_start) = serde_json::from_str::<ClaudeMessageStart>(data) {
                         if msg_start.type_ == "message_start" {
-                            log_info!("Received Claude message_start: {}", msg_start.message.id);
                             response_id = Some(msg_start.message.id.clone());
                         }
                     }
@@ -135,7 +132,6 @@ impl LlmClient for ClaudeClient {
             }
         }
 
-        log_info!("Claude stream ended. Response ID: {:?}, Length: {}", response_id, full_reply.len());
 
         Ok(StreamResponse {
             response_id: response_id.ok_or("No response ID received")?,

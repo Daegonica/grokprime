@@ -185,7 +185,7 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 /// ```
 async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
     log_init("Shadow", Some("logs/shadow.log"), OutputTarget::LogFile)?;
-    log_info!("Starting Shadow in TUI mode");
+    log_info!("Starting Shadow in CLI mode");
     
     let personas = discover_personas()?;
     let persona_paths: Vec<&Path> = personas.iter()

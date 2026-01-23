@@ -326,6 +326,7 @@ impl ShadowApp {
             while let Ok(chunk) = pane.chunk_receiver.try_recv() {
                 match chunk {
                     StreamChunk::Delta(text) => {
+                        
                         if let Some(last_msg) = pane.messages.back_mut() {
                             if !last_msg.starts_with('>') {
                                 last_msg.push_str(&text);
@@ -334,6 +335,10 @@ impl ShadowApp {
                             }
                         } else {
                             pane.add_message(text);
+                        }
+                        
+                        if pane.auto_scroll {
+                            pane.scroll_to_bottom();
                         }
                     }
 
@@ -347,7 +352,6 @@ impl ShadowApp {
 
                         pane.is_waiting = false;
                         pane.active_task = None;
-                        log_info!("Response completed: {}", response_id);
                     }
 
                     StreamChunk::Error(err) => {
@@ -385,13 +389,15 @@ impl ShadowApp {
             timestamp: SystemTime::now(),
         });
 
-        self.scroll_to_bottom();
+        if let Some(pane) = self.current_pane_mut() {
+            pane.scroll_to_bottom();
+        }
     }
 
     /// # scroll_to_bottom
     ///
     /// **Purpose:**
-    /// Sets global scroll position to maximum to show the most recent messages.
+    /// Sets current pane's scroll position to maximum to show the most recent messages.
     ///
     /// **Parameters:**
     /// None
@@ -399,7 +405,9 @@ impl ShadowApp {
     /// **Returns:**
     /// None (mutates scroll state)
     pub fn scroll_to_bottom(&mut self) {
-        self.scroll = u16::MAX;
+        if let Some(pane) = self.current_pane_mut() {
+            pane.scroll = u16::MAX;
+        }
     }
 
     fn scroll_input_to_bottom(&mut self) {
@@ -478,19 +486,29 @@ impl ShadowApp {
 
             // History Scroll control
             KeyCode::Up => {
-                self.scroll = self.scroll.saturating_sub(1);
+                if let Some(pane) = self.current_pane_mut() {
+                    pane.scroll = pane.scroll.saturating_sub(1);
+                    pane.auto_scroll = false;  // User is manually scrolling
+                }
                 true
             }
             KeyCode::Down => {
-                self.scroll = self.scroll.saturating_add(1);
+                if let Some(pane) = self.current_pane_mut() {
+                    pane.scroll = pane.scroll.saturating_add(1);
+                }
                 true
             }
             KeyCode::PageUp => {
-                self.scroll = self.scroll.saturating_sub(GLOBAL_CONFIG.tui.page_scroll_step);
+                if let Some(pane) = self.current_pane_mut() {
+                    pane.scroll = pane.scroll.saturating_sub(GLOBAL_CONFIG.tui.page_scroll_step);
+                    pane.auto_scroll = false;
+                }
                 true
             }
             KeyCode::PageDown => {
-                self.scroll = self.scroll.saturating_add(GLOBAL_CONFIG.tui.page_scroll_step);
+                if let Some(pane) = self.current_pane_mut() {
+                    pane.scroll = pane.scroll.saturating_add(GLOBAL_CONFIG.tui.page_scroll_step);
+                }
                 true
             }
             KeyCode::Esc => {
@@ -637,15 +655,17 @@ impl ShadowApp {
         let mut lines: Vec<Line> = Vec::new();
         if let Some(pane) = self.current_pane() {
             for msg in &pane.messages {
-                let content = if msg.starts_with('>') {
-                    Line::from(Span::styled(
-                        msg.clone(),
-                        Style::default().fg(GLOBAL_CONFIG.tui.user_message_color).add_modifier(Modifier::BOLD),
-                    ))
-                } else {
-                    Line::from(msg.clone())
-                };
-                lines.push(content);
+                for line_text in msg.split('\n') {
+                    let content = if msg.starts_with('>') {
+                        Line::from(Span::styled(
+                            line_text,
+                            Style::default().fg(GLOBAL_CONFIG.tui.user_message_color).add_modifier(Modifier::BOLD),
+                        ))
+                    } else {
+                        Line::from(line_text)
+                    };
+                    lines.push(content);
+                }
             }
         }
         lines
@@ -809,12 +829,18 @@ impl ShadowApp {
             ])
             .split(message_area);
 
+        // Setup input area
+        let input_area = chunks[1];
+    
+        self.render_input(frame, input_area);
+    
+
         // Gather messages from each pane and unified messages
         let pane_lines = self.pan_messages();
         let unified_lines = self.unified_messages();
         let mut global_scroll = self.scroll;
         let mut agent_scroll = self.current_pane()
-                .map(|p| p.scroll)
+                .map(|p| if p.auto_scroll { u16::MAX } else { p.scroll })
                 .unwrap_or(0);
 
         render_message_section(
@@ -829,7 +855,7 @@ impl ShadowApp {
             self.current_agent
                 .unwrap_or(Uuid::nil())
         );
-        render_message_section(
+        let is_at_bottom = render_message_section(
             frame,
             split[0],
             pane_lines,
@@ -839,13 +865,10 @@ impl ShadowApp {
 
         if let Some(pane) = self.current_pane_mut() {
             pane.scroll = agent_scroll;
+            
+            // Re-enable auto_scroll if render confirmed we're at actual bottom
+            pane.auto_scroll = is_at_bottom;
         }
-
-        // Setup input area
-        let input_area = chunks[1];
-
-        self.render_input(frame, input_area);
-
 
         if input_area.height > 2 && input_area.width > 6 && !self.is_waiting {
             let width = input_area.width.saturating_sub(6) as usize;
