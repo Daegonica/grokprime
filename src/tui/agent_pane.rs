@@ -98,6 +98,7 @@ impl AgentPane {
     /// - None (infallible)
     pub fn new(id: Uuid, persona: PersonaRef) -> Self {
 
+        // Pick AI client based on persona's api_provider
         let client = match persona.api_provider.as_str() {
             "claude" => AnyClient::Claude(ClaudeClient::new().expect("Faild to init Claude.")),
             _ => AnyClient::Grok(GrokClient::new().expect("Failed to init Grok.")),
@@ -111,7 +112,7 @@ impl AgentPane {
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,
-            auto_scroll: true,  // Start following new messages
+            auto_scroll: true,
             max_history: 1000,
             is_waiting: false,
             input_scroll: 0,

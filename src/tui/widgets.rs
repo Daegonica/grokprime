@@ -56,7 +56,22 @@ pub fn render_message_section(
 ) -> bool {
 
     let visible_height = area.height.saturating_sub(2);
-    let content_height = lines.len() as u16;
+    let content_width = area.width.saturating_sub(2) as usize; // Account for borders
+    
+    // Calculate actual wrapped line count
+    let mut wrapped_line_count = 0u16;
+    for line in &lines {
+        let line_width = line.width();
+        if line_width == 0 {
+            wrapped_line_count += 1; // Empty lines still take 1 line
+        } else {
+            // Calculate how many visual lines this Line will wrap into
+            let visual_lines = (line_width + content_width - 1) / content_width.max(1);
+            wrapped_line_count += visual_lines as u16;
+        }
+    }
+    
+    let content_height = wrapped_line_count;
     let content_len = content_height as usize;
     let viewport_len = visible_height as usize;
 

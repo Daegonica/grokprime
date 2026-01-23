@@ -445,6 +445,74 @@ impl Command for UnimplementedCommand {
     }
 }
 
+#[derive(Debug, Clone)]
+struct TweetCommand {
+    text: String,
+}
+
+impl Command for TweetCommand {
+    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
+        let Some(pane) = app.current_pane_mut() else {
+            app.add_message("No agent available. Create one with 'new <persona>'");
+            return CommandResult::Continue;
+        };
+
+        pane.add_message(r#"
+            If I can't get the ai to respond to me quick enough with something big enough to actually trigger the autoscroll. Then I'll do it myself.
+            I believe I've learned enough to actually code some useful test commands. I mean sure it's not the way most people would do it. But yet
+            again I'm not most people and I didn't go to school for this shit. I'm just making up as I go and hoping the code works. So far so good
+            I'd say! Alright this is probably enough I can always just spam this command.
+            "#.to_string());
+        CommandResult::Continue
+    }
+}
+
+#[derive(Debug, Clone)]
+struct DraftTweetCommand {
+    text: String,
+}
+
+impl Command for DraftTweetCommand {
+    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
+        let Some(pane) = app.current_pane_mut() else {
+            app.add_message("No agent available. Create one with 'new <persona>'");
+            return CommandResult::Continue;
+        };
+
+        pane.add_message(format!("> Tweet Draft: {}", self.text));
+        pane.is_waiting = true;
+
+        if let Some(old_task) = pane.active_task.take() {
+            old_task.abort();
+        }
+
+        let mut connection = pane.connection.clone();
+        let tx = pane.chunk_sender.clone();
+        let text_owned = self.text.clone();
+
+        let handle = tokio::spawn(async move {
+            let define_tweet = format!(r#"
+                Please draft a tweet with the following content: "{}"
+                Keep it under 280 characters and suitable for Twitter.
+                Respond only with the tweet text, no additional commentary.
+                Use a casual and engaging tone.
+                Have at least one hashtag relevant to the content.
+                Have at least one mention of a relevant Twitter handle.
+                Prefer threads if necessary to fit the content.
+                Make it engaging and likely to get interactions.
+                Tag it with -Shadow at the end.
+                "#, text_owned);
+            connection.add_user_message(&define_tweet);
+            if let Err(e) = connection.handle_response_streaming(tx.clone()).await {
+                let _ = tx.send(StreamChunk::Error(format!("{}", e)));
+            }
+        });
+
+        pane.active_task = Some(handle);
+        CommandResult::Continue
+    }
+}
+
 /// # from_input_action
 ///
 /// **Purpose:**
@@ -474,12 +542,8 @@ pub fn from_input_action(action: InputAction) -> Box<dyn Command> {
         InputAction::CloseAgent => Box::new(CloseAgentCommand::new()),
         InputAction::AgentStatus => Box::new(AgentStatusCommand::new()),
         InputAction::ListAgents => Box::new(ListAgentsCommand::new()),
-        InputAction::PostTweet(text) => Box::new(UnimplementedCommand {
-            feature: format!("Tweet: {}", text),
-        }),
-        InputAction::DraftTweet(text) => Box::new(UnimplementedCommand {
-            feature: format!("Draft tweet: {}", text),
-        }),
+        InputAction::PostTweet(text) => Box::new(TweetCommand {text}),
+        InputAction::DraftTweet(text) => Box::new(DraftTweetCommand {text}),
         InputAction::DoNothing | InputAction::ContinueNoSend(_) => {
             Box::new(UnimplementedCommand {
                 feature: "Internal action".to_string(),

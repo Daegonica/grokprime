@@ -866,8 +866,7 @@ impl ShadowApp {
         if let Some(pane) = self.current_pane_mut() {
             pane.scroll = agent_scroll;
             
-            // Re-enable auto_scroll if render confirmed we're at actual bottom
-            pane.auto_scroll = is_at_bottom;
+           pane.auto_scroll = is_at_bottom;
         }
 
         if input_area.height > 2 && input_area.width > 6 && !self.is_waiting {

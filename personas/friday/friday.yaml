@@ -65,7 +65,7 @@ tools:
   - file_writer
 
 # History settings
-enable_history: true
+enable_history: false
 history_message_limit: 15
 summary_threshold: 25
 api_provider: "claude"

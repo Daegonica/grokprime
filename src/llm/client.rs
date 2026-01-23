@@ -61,6 +61,7 @@ impl<T: LlmClient> Connection<T> {
                 GrokConversation::new(persona)
             }
         } else {
+            log_info!("History not enabled for {}", persona.name);
             GrokConversation::new(persona)
         };
 
