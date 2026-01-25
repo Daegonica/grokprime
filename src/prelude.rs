@@ -20,6 +20,8 @@
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
 
+
+// Rust crates
 pub use reqwest::Client;
 pub use serde::{Deserialize, Serialize};
 pub use serde_json;
@@ -35,34 +37,47 @@ pub use tokio::task;
 pub use std::fs::{self, read_to_string, write, File};
 pub use std::path::{Path, PathBuf};
 
-pub use dlog::{log_init, log_error, log_info, enums::OutputTarget};
+// *** Current crate ***
 
+// Features
+pub use crate::twitter::*;
+
+// Config file
+pub use crate::config::{AppConfig, GrokConfig, TuiConfig, HistoryConfig, GLOBAL_CONFIG};
+
+// User specific
+pub use crate::user::user_input::UserInput;
+pub use crate::user::system_info::OsInfo;
+
+// Utility files
 pub use crate::models::*;
 pub use crate::capitalize_first;
-
+pub use crate::errors::ShadowError;
+pub use crate::utilities::cli::Args;
 pub use crate::utilities::outputs::{
     OutputHandler, 
     SharedOutput, 
     CliOutput,
 };
-pub use crate::utilities::cli::Args;
-pub use crate::errors::ShadowError;
 
-pub use crate::twitter::*;
-pub use crate::persona::{Persona, PersonaRef};
-
-pub use crate::grok::client::GrokClient;
-
-pub use crate::llm::client::Connection;
-pub use crate::llm::{LlmClient, StreamResponse};
-
-pub use crate::claude::client::ClaudeClient;
-
+// Agent tracking
 pub use crate::agent_history::conversations::GrokConversation;
 pub use crate::agent_history::history::HistoryManager;
+pub use crate::persona::{
+    Persona,
+    PersonaRef,
+};
+pub use crate::persona::agent_manager::AgentManager;
+pub use crate::persona::agent::AgentInfo;
 
-pub use crate::user::user_input::UserInput;
-pub use crate::user::system_info::OsInfo;
+// AI Connections
+pub use crate::grok::client::GrokClient;
+pub use crate::llm::client::Connection;
+pub use crate::llm::{LlmClient, StreamResponse};
+pub use crate::claude::client::ClaudeClient;
 
+// TUI related
 pub use crate::tui::{ShadowApp, AgentPane, MessageSource, UnifiedMessage};
-pub use crate::config::{AppConfig, GrokConfig, TuiConfig, HistoryConfig, GLOBAL_CONFIG};
+
+// Daegonica Software crates
+pub use dlog::{log_init, log_error, log_info, enums::OutputTarget};

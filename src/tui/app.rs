@@ -114,12 +114,15 @@ pub struct ShadowApp {
     pub max_history: usize,
     pub user_input: Option<UserInput>,
     pub is_waiting: bool,
+
     pub input_scroll: usize,
     pub input_max_lines: u16,
+
     pub personas: HashMap<String, PersonaRef>,
     pub agents: HashMap<Uuid, AgentPane>,
     pub agent_order: Vec<Uuid>,
     pub current_agent: Option<Uuid>,
+
     pub unified_messages: VecDeque<UnifiedMessage>,
 }
 
@@ -235,7 +238,8 @@ impl ShadowApp {
     ///
     /// **Returns:**
     /// None (mutates internal state)
-    pub fn remove_agent(&mut self, id: Uuid) {
+    pub fn remove_agent(&mut self, id: Uuid) 
+    {
         if let Some(pane) = self.agents.get_mut(&id) {
             if let Some(task) = pane.active_task.take() {
                 task.abort();
@@ -705,7 +709,7 @@ impl ShadowApp {
             Text::from(vec![
                 Line::from(vec![
                     Span::styled(" > ", Style::default().fg(GLOBAL_CONFIG.tui.border_color).add_modifier(Modifier::BOLD)),
-                    Span::styled(format!("Shadow is thinking...{}", dots), Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
+                    Span::styled(format!("Shadow is thinking{}", dots), Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC)),
                 ])
             ])
         } else {

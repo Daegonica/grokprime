@@ -27,6 +27,9 @@ use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 use crate::prelude::*;
 
+pub mod agent;
+pub mod agent_manager;
+
 /// # Persona
 ///
 /// **Summary:**
@@ -115,11 +118,6 @@ fn default_api_provider() -> String { "grok".to_string() }
 /// let persona_ref: PersonaRef = Arc::new(persona);
 /// ```
 pub type PersonaRef = Arc<Persona>;
-
-pub mod agent_registry;
-
-pub use agent_registry::*;
-
 
 /// Discover all available personas by scanning the personas directory
 ///

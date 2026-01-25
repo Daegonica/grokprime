@@ -20,6 +20,7 @@
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
 
+use grokprime_brain::persona::discover_personas;
 use grokprime_brain::{
     prelude::*,
     commands::{from_input_action, CommandResult},
@@ -35,7 +36,7 @@ use std::sync::Arc;
 use ratatui::prelude::*;
 use std::io::stdout;
 use std::time::Duration;
-use grokprime_brain::persona::discover_personas;
+
 
 
 /// # main
@@ -55,6 +56,9 @@ use grokprime_brain::persona::discover_personas;
 /// - File I/O errors when saving history
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+    log_init("Shadow", Some("logs/shadow.log"), OutputTarget::LogFile)?;
+
     let args = Args::parse();
 
     if args.is_tui_mode() {
@@ -66,33 +70,72 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+enum CurrentMode {
+    Shadow(ShadowApp),
+    Manager(AgentManager),
+}
+
 fn initialize_app(
-    persona_paths: Vec<&Path>,
     default_persona: &str,
     for_cli: bool,
-) -> anyhow::Result<ShadowApp> {
-    let mut app = ShadowApp::new();
+) -> anyhow::Result<CurrentMode> {
+
+    let personas = discover_personas()?;
+    let persona_paths: Vec<&Path> = personas.iter()
+        .map(|(_, path_buf)| path_buf.as_path())
+        .collect();
 
     log_info!("Loading personas from paths: {:?}", persona_paths);
-    app.load_personas(persona_paths)?;
-
-    if let Some(persona_ref) = app.personas.get(default_persona) {
-        let id = Uuid::new_v4();
-        app.add_agent(id, Arc::clone(persona_ref));
-        app.current_agent = Some(id);
-        log_info!("Added default agent: {}", default_persona);
-    } else {
-        anyhow::bail!("Persona '{}' not found!", default_persona);
-    }
 
     let user_input = if for_cli {
         UserInput::new(Some(Arc::new(CliOutput)))
     } else {
         UserInput::new_for_tui()
     };
-    app.user_input = Some(user_input);
 
-    Ok(app)
+    if for_cli {
+
+        let mut agent_manager = AgentManager::new();
+        agent_manager.load_personas(persona_paths.clone())?;
+        agent_manager.user_input = Some(user_input);
+
+        log_info!("Starting Shadow in CLI mode");
+        println!("Welcome to Shadow (CLI Mode)");
+        println!("Type 'quit' or 'exit' to leave");
+
+        agent_manager.load_personas(persona_paths)?;
+    
+        if let Some(persona_ref) = agent_manager.personas.get(default_persona) {
+            let id = Uuid::new_v4();
+            agent_manager.add_agent(id, Arc::clone(persona_ref));
+            agent_manager.current_agent = Some(id);
+            log_info!("Added default agent: {}", default_persona);
+        } else {
+            anyhow::bail!("Persona '{}' not found!", default_persona);
+        }
+
+        Ok(CurrentMode::Manager(agent_manager))
+    } else {
+
+        let mut app = ShadowApp::new();
+        app.load_personas(persona_paths)?;
+        app.user_input = Some(user_input);
+
+        log_info!("Starting Shadow in TUI mode");
+        app.add_message("Welcome to Shadow (TUI Mode)");
+        app.add_message("Press ESC to exit");
+    
+        if let Some(persona_ref) = app.personas.get(default_persona) {
+            let id = Uuid::new_v4();
+            app.add_agent(id, Arc::clone(persona_ref));
+            app.current_agent = Some(id);
+            log_info!("Added default agent: {}", default_persona);
+        } else {
+            anyhow::bail!("Persona '{}' not found!", default_persona);
+        }
+
+        Ok(CurrentMode::Shadow(app))
+    }
 }
 
 
@@ -120,25 +163,14 @@ fn initialize_app(
 /// run_tui_mode().await?;
 /// ```
 async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
-    log_init("Shadow", Some("logs/shadow.log"), OutputTarget::LogFile)?;
-    log_info!("Starting Shadow in TUI mode");
 
-    // Ratatui setup
     enable_raw_mode()?;
     stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
-    // Initialize first agent/load all personas
-    let personas = discover_personas()?;
-    let persona_paths: Vec<&Path> = personas.iter()
-        .map(|(_, path_buf)| path_buf.as_path())
-        .collect();
-    let mut app = initialize_app(persona_paths, "shadow", false)?;
-    
-    // ***
-    app.add_message("Welcome to Shadow (TUI Mode)");
-    app.add_message("Press ESC to exit");
-    // ***
+    let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+    let CurrentMode::Shadow(mut app) = initialize_app("shadow", false)? else {
+        panic!("Expected Shadow variant in TUI mode.");
+    };
 
     loop {
         app.poll_channels();
@@ -185,17 +217,10 @@ async fn run_tui_mode() -> Result<(), Box<dyn std::error::Error>> {
 /// run_cli_mode().await?;
 /// ```
 async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
-    log_init("Shadow", Some("logs/shadow.log"), OutputTarget::LogFile)?;
-    log_info!("Starting Shadow in CLI mode");
-    
-    let personas = discover_personas()?;
-    let persona_paths: Vec<&Path> = personas.iter()
-        .map(|(_, path_buf)| path_buf.as_path())
-        .collect();
-    let mut app = initialize_app(persona_paths, persona, true)?;
 
-    println!("Welcome to Shadow (CLI Mode)");
-    println!("Type 'quit' or 'exit' to leave");
+    let CurrentMode::Manager(mut app) = initialize_app(persona, true)? else {
+        panic!("Expected Manager variant in CLI mode.");
+    };
 
     loop {
 
@@ -210,15 +235,15 @@ async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
                     }
 
                     InputAction::SendAsMessage(content) => {
-                        if let Some(pane) = app.current_pane_mut() {
-                            pane.add_message(format!("> {}", content));
-                            pane.connection.add_user_message(&content);
+                        if let Some(agent) = app.current_pane_mut() {
+                            agent.add_message(format!("> {}", content));
+                            agent.connection.add_user_message(&content);
                             
-                            let msg_count_before = pane.messages.len();
+                            let msg_count_before = agent.messages.len();
 
                             println!("Shadow is thinking...\n");
                             
-                            if let Err(e) = pane.connection.handle_response().await {
+                            if let Err(e) = agent.connection.handle_response().await {
                                 eprintln!("Error: {}", e);
                                 continue;
                             }
@@ -228,9 +253,9 @@ async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
 
                                 app.poll_channels();
 
-                                if let Some(pane) = app.current_pane() {
-                                    if pane.messages.len() > msg_count_before {
-                                        if let Some(last_msg) = pane.messages.back() {
+                                if let Some(agent) = app.current_pane() {
+                                    if agent.messages.len() > msg_count_before {
+                                        if let Some(last_msg) = agent.messages.back() {
                                             if !last_msg.starts_with('>') {
                                                 print!("\r{}", last_msg);
                                                 std::io::stdout().flush().unwrap();
@@ -238,7 +263,7 @@ async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
                                         }
                                     }
 
-                                    if !pane.is_waiting {
+                                    if !agent.is_waiting {
                                         println!("\n");
                                         break;
                                     }
@@ -271,8 +296,8 @@ async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     
-    if let Some(pane) = app.current_pane_mut() {
-        let _ = pane.connection.save_persona_history();
+    if let Some(agent) = app.current_pane_mut() {
+        let _ = agent.connection.save_persona_history();
     }
 
     Ok(())

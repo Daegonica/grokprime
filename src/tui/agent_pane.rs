@@ -67,7 +67,7 @@ pub struct AgentPane {
     pub messages: VecDeque<String>,
     pub input: String,
     pub scroll: u16,
-    pub auto_scroll: bool,  // true = follow new messages, false = user scrolled up
+    pub auto_scroll: bool,
     pub max_history: usize,
     pub is_waiting: bool,
     pub input_scroll: usize,

@@ -479,36 +479,43 @@ impl Command for DraftTweetCommand {
             return CommandResult::Continue;
         };
 
-        pane.add_message(format!("> Tweet Draft: {}", self.text));
-        pane.is_waiting = true;
+        let persona_name = pane.persona_name.clone();
 
-        if let Some(old_task) = pane.active_task.take() {
-            old_task.abort();
+        if persona_name == "viral" {
+            pane.add_message(format!("> Tweet Draft: {}", self.text));
+            pane.is_waiting = true;
+
+            if let Some(old_task) = pane.active_task.take() {
+                old_task.abort();
+            }
+
+            let mut connection = pane.connection.clone();
+            let tx = pane.chunk_sender.clone();
+            let text_owned = self.text.clone();
+
+            let handle = tokio::spawn(async move {
+                let define_tweet = format!(r#"
+                    Please draft a tweet with the following content: "{}"
+                    Keep it under 280 characters and suitable for Twitter.
+                    Respond only with the tweet text, no additional commentary.
+                    Use a casual and engaging tone.
+                    Have at least one hashtag relevant to the content.
+                    Have at least one mention of a relevant Twitter handle.
+                    Prefer threads if necessary to fit the content.
+                    Make it engaging and likely to get interactions.
+                    Tag it with -Shadow at the end.
+                    "#, text_owned);
+                connection.add_user_message(&define_tweet);
+                if let Err(e) = connection.handle_response_streaming(tx.clone()).await {
+                    let _ = tx.send(StreamChunk::Error(format!("{}", e)));
+                }
+            });
+
+            pane.active_task = Some(handle);
+        } else {
+            pane.add_message("Wrong Agent! Switch to Viral!")
         }
 
-        let mut connection = pane.connection.clone();
-        let tx = pane.chunk_sender.clone();
-        let text_owned = self.text.clone();
-
-        let handle = tokio::spawn(async move {
-            let define_tweet = format!(r#"
-                Please draft a tweet with the following content: "{}"
-                Keep it under 280 characters and suitable for Twitter.
-                Respond only with the tweet text, no additional commentary.
-                Use a casual and engaging tone.
-                Have at least one hashtag relevant to the content.
-                Have at least one mention of a relevant Twitter handle.
-                Prefer threads if necessary to fit the content.
-                Make it engaging and likely to get interactions.
-                Tag it with -Shadow at the end.
-                "#, text_owned);
-            connection.add_user_message(&define_tweet);
-            if let Err(e) = connection.handle_response_streaming(tx.clone()).await {
-                let _ = tx.send(StreamChunk::Error(format!("{}", e)));
-            }
-        });
-
-        pane.active_task = Some(handle);
         CommandResult::Continue
     }
 }
@@ -532,21 +539,21 @@ impl Command for DraftTweetCommand {
 /// ```
 pub fn from_input_action(action: InputAction) -> Box<dyn Command> {
     match action {
-        InputAction::Quit => Box::new(QuitCommand::new()),
+        InputAction::Quit                   => Box::new(QuitCommand::new()),
         InputAction::SendAsMessage(content) => Box::new(SendMessageCommand::new(content)),
-        InputAction::SaveHistory => Box::new(SaveHistoryCommand::new()),
-        InputAction::HistoryInfo => Box::new(HistoryInfoCommand::new()),
-        InputAction::ClearHistory => Box::new(ClearHistoryCommand::new()),
-        InputAction::Summarize => Box::new(SummarizeCommand::new()),
-        InputAction::NewAgent(persona) => Box::new(NewAgentCommand::new(persona)),
-        InputAction::CloseAgent => Box::new(CloseAgentCommand::new()),
-        InputAction::AgentStatus => Box::new(AgentStatusCommand::new()),
-        InputAction::ListAgents => Box::new(ListAgentsCommand::new()),
-        InputAction::PostTweet(text) => Box::new(TweetCommand {text}),
-        InputAction::DraftTweet(text) => Box::new(DraftTweetCommand {text}),
+        InputAction::SaveHistory            => Box::new(SaveHistoryCommand::new()),
+        InputAction::HistoryInfo            => Box::new(HistoryInfoCommand::new()),
+        InputAction::ClearHistory           => Box::new(ClearHistoryCommand::new()),
+        InputAction::Summarize              => Box::new(SummarizeCommand::new()),
+        InputAction::NewAgent(persona)      => Box::new(NewAgentCommand::new(persona)),
+        InputAction::CloseAgent             => Box::new(CloseAgentCommand::new()),
+        InputAction::AgentStatus            => Box::new(AgentStatusCommand::new()),
+        InputAction::ListAgents             => Box::new(ListAgentsCommand::new()),
+        InputAction::PostTweet(text)        => Box::new(TweetCommand {text}),
+        InputAction::DraftTweet(text)       => Box::new(DraftTweetCommand {text}),
         InputAction::DoNothing | InputAction::ContinueNoSend(_) => {
             Box::new(UnimplementedCommand {
-                feature: "Internal action".to_string(),
+                feature: "Hey dumbass, these do nothing".to_string(),
             })
         }
     }
