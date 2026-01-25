@@ -24,6 +24,7 @@ use grokprime_brain::persona::discover_personas;
 use grokprime_brain::{
     prelude::*,
     commands::{from_input_action, CommandResult},
+    persona::operations::AgentOperations,
 };
 use clap::Parser;
 use crossterm::{
@@ -119,16 +120,16 @@ fn initialize_app(
 
         let mut app = ShadowApp::new();
         app.load_personas(persona_paths)?;
-        app.user_input = Some(user_input);
+        app.agent_manager.user_input = Some(user_input);
 
         log_info!("Starting Shadow in TUI mode");
         app.add_message("Welcome to Shadow (TUI Mode)");
         app.add_message("Press ESC to exit");
     
-        if let Some(persona_ref) = app.personas.get(default_persona) {
+        if let Some(persona_ref) = app.agent_manager.personas.get(default_persona) {
             let id = Uuid::new_v4();
             app.add_agent(id, Arc::clone(persona_ref));
-            app.current_agent = Some(id);
+            app.agent_manager.current_agent = Some(id);
             log_info!("Added default agent: {}", default_persona);
         } else {
             anyhow::bail!("Persona '{}' not found!", default_persona);
@@ -277,7 +278,7 @@ async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
 
                     action => {
                         let command = from_input_action(action);
-                        let result = command.execute(&mut app);
+                        let result = command.execute(&mut app as &mut dyn AgentOperations);
 
                         match result {
                             CommandResult::Continue => {},

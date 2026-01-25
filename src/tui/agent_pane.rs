@@ -21,15 +21,8 @@
 //! This file is part of the Daegonica Software codebase.
 //! ---------------------------------------------------------------
 
-use std::collections::VecDeque;
 use uuid::Uuid;
 use crate::prelude::*;
-use crate::llm::client::Connection;
-use crate::claude::client::ClaudeClient;
-use crate::grok::client::GrokClient;
-use crate::llm::AnyClient;
-
-type DynamicConnection = Connection<AnyClient>;
 
 
 /// # AgentPane
@@ -61,23 +54,12 @@ type DynamicConnection = Connection<AnyClient>;
 /// ```
 #[derive(Debug)]
 pub struct AgentPane {
-    pub id: Uuid,
-    pub persona_name: String,
-    pub connection: DynamicConnection,
-    pub messages: VecDeque<String>,
-    pub input: String,
+    pub agent: AgentInfo,
+
     pub scroll: u16,
     pub auto_scroll: bool,
-    pub max_history: usize,
-    pub is_waiting: bool,
     pub input_scroll: usize,
     pub input_max_lines: u16,
-
-    pub chunk_receiver: mpsc::UnboundedReceiver<StreamChunk>,
-    pub chunk_sender: mpsc::UnboundedSender<StreamChunk>,
-
-    pub active_task: Option<tokio::task::JoinHandle<()>>,
-
     pub thinking_animation_frame: usize,
 }
 
@@ -98,28 +80,12 @@ impl AgentPane {
     /// - None (infallible)
     pub fn new(id: Uuid, persona: PersonaRef) -> Self {
 
-        // Pick AI client based on persona's api_provider
-        let client = match persona.api_provider.as_str() {
-            "claude" => AnyClient::Claude(ClaudeClient::new().expect("Faild to init Claude.")),
-            _ => AnyClient::Grok(GrokClient::new().expect("Failed to init Grok.")),
-        };
-        let (tx, rx) = mpsc::unbounded_channel();
-        
         Self {
-            id,
-            persona_name: persona.name.clone(),
-            connection: Connection::new_without_output(client, persona),
-            messages: VecDeque::new(),
-            input: String::new(),
+            agent: AgentInfo::new(id, persona),
             scroll: 0,
             auto_scroll: true,
-            max_history: 1000,
-            is_waiting: false,
             input_scroll: 0,
             input_max_lines: 20,
-            chunk_sender: tx,
-            chunk_receiver: rx,
-            active_task: None,
             thinking_animation_frame: 0,
          }
     }
@@ -136,7 +102,7 @@ impl AgentPane {
     /// None (mutates internal state)
     pub fn add_message(&mut self, msg: impl Into<String>) {
         
-        self.messages.push_back(msg.into());
+        self.agent.add_message(msg);
 
         if self.auto_scroll {
             self.scroll_to_bottom();
@@ -156,83 +122,5 @@ impl AgentPane {
     pub fn scroll_to_bottom(&mut self) {
         self.scroll = u16::MAX;  // Will be clamped to actual max by render
         self.auto_scroll = true;   // Re-enable auto-scroll
-    }
-
-    /// # wrap_input_text
-    ///
-    /// **Purpose:**
-    /// Wraps the current input text to fit within the specified width.
-    ///
-    /// **Parameters:**
-    /// - `width`: Maximum line width in characters
-    ///
-    /// **Returns:**
-    /// Vector of wrapped lines
-    ///
-    /// **Errors / Failures:**
-    /// - None (infallible)
-    pub fn wrap_input_text(&self, width: usize) -> Vec<String> {
-        if self.input.is_empty() {
-            return vec![String::new()];
-        }
-
-        let mut lines = Vec::new();
-        let mut current_line = String::new();
-
-        for word in self.input.split_inclusive(|c: char| c.is_whitespace()) {
-            if word.contains('\n') {
-                let parts: Vec<&str> = word.split('\n').collect();
-                for (i, part) in parts.iter().enumerate() {
-                    if i > 0 {
-                        lines.push(current_line.clone());
-                        current_line.clear();
-                    }
-                    if !part.is_empty() {
-                        let test_len = current_line.len() + part.len();
-                        if test_len > width && !current_line.is_empty() {
-                            lines.push(current_line.clone());
-                            current_line = part.to_string();
-                        } else {
-                            current_line.push_str(part);
-                        }
-                    }
-                }
-                continue;
-            }
-
-            let test_len = current_line.len() + word.len();
-
-            if test_len > width && !current_line.is_empty() {
-                lines.push(current_line.trim_end().to_string());
-                current_line = word.to_string();
-            } else {
-                current_line.push_str(word);
-            }
-        }
-
-        if !current_line.is_empty() {
-            lines.push(current_line);
-        }
-
-        if lines.is_empty() {
-            vec![String::new()]
-        } else {
-            lines
-        }
-    }
-
-    /// # scroll_input_to_bottom
-    ///
-    /// **Purpose:**
-    /// Adjusts input scroll position to show the last lines of wrapped input text.
-    ///
-    /// **Parameters:**
-    /// None
-    ///
-    /// **Returns:**
-    /// None (mutates input_scroll state)
-    pub fn scroll_input_to_bottom(&mut self) {
-        let wrapped = self.wrap_input_text(100);
-        self.input_scroll = wrapped.len().saturating_sub(self.input_max_lines as usize);
     }
 }

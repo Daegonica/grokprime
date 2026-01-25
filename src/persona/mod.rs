@@ -29,6 +29,7 @@ use crate::prelude::*;
 
 pub mod agent;
 pub mod agent_manager;
+pub mod operations;
 
 /// # Persona
 ///

@@ -25,6 +25,50 @@ use crate::prelude::*;
 use crate::tui::ShadowApp;
 use std::fmt::Debug;
 use uuid::Uuid;
+use crate::persona::agent_manager::AgentManager;
+use crate::persona::operations::AgentOperations;
+
+pub trait AgentContext {
+    fn get_agent_manager(&self) -> &AgentManager;
+    fn get_agent_manager_mut(&mut self) -> &mut AgentManager;
+    fn add_ui_message(&mut self, msg: String);
+}
+
+impl AgentContext for ShadowApp {
+    fn get_agent_manager(&self) -> &AgentManager {
+        &self.agent_manager
+    }
+
+    fn get_agent_manager_mut(&mut self) -> &mut AgentManager {
+        &mut self.agent_manager
+    }
+
+    fn add_ui_message(&mut self, msg: String) {
+        self.add_message(msg);
+    }
+}
+
+impl AgentContext for AgentManager {
+    fn get_agent_manager(&self) -> &AgentManager {
+        self
+    }
+
+    fn get_agent_manager_mut(&mut self) -> &mut AgentManager {
+        self
+    }
+
+    fn add_ui_message(&mut self, msg: String) {
+        println!("{}", msg);
+    }
+}
+
+pub trait AgentCommand: Debug {
+    fn execute(&self, ctx: &mut dyn AgentContext) -> CommandResult;
+}
+
+pub trait TuiCommand: Debug {
+    fn execute(&self, app: &mut ShadowApp) -> CommandResult;
+}
 
 /// # Command
 ///
@@ -55,7 +99,7 @@ pub trait Command: Debug {
     ///
     /// # Returns
     /// - `CommandResult`: The outcome of the command execution
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult;
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult;
 }
 
 /// # CommandResult
@@ -108,21 +152,21 @@ impl SendMessageCommand {
 }
 
 impl Command for SendMessageCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        let Some(pane) = app.current_pane_mut() else {
-            app.add_message("No agent available. Create one with 'new <persona>'");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        let Some(agent) = ops.current_agent_info_mut() else {
+            ops.display_message("No agent available. Create one with 'new <persona>'".to_string());
             return CommandResult::Continue;
         };
 
-        pane.add_message(format!("> {}", self.content));
-        pane.is_waiting = true;
+        agent.add_message(format!("> {}", self.content));
+        agent.is_waiting = true;
 
-        if let Some(old_task) = pane.active_task.take() {
+        if let Some(old_task) = agent.active_task.take() {
             old_task.abort();
         }
 
-        let mut connection = pane.connection.clone();
-        let tx = pane.chunk_sender.clone();
+        let mut connection = agent.connection.clone();
+        let tx = agent.chunk_sender.clone();
         let content_owned = self.content.clone();
 
         let handle = tokio::spawn(async move {
@@ -132,7 +176,7 @@ impl Command for SendMessageCommand {
             }
         });
 
-        pane.active_task = Some(handle);
+        agent.active_task = Some(handle);
         CommandResult::Continue
     }
 }
@@ -151,23 +195,23 @@ impl SaveHistoryCommand {
 }
 
 impl Command for SaveHistoryCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        let Some(pane) = app.current_pane_mut() else {
-            app.add_message("No agent available to save history for.");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        let Some(agent) = ops.current_agent_info_mut() else {
+            ops.display_message("No agent available to save history for.".to_string());
             return CommandResult::Continue;
         };
 
-        let result = pane.connection.save_persona_history();
-        let persona_name = pane.connection.conversation.persona.name.clone();
+        let result = agent.connection.save_persona_history();
+        let persona_name = agent.connection.conversation.persona.name.clone();
 
         match result {
             Ok(_) => {
-                app.add_message(format!("History saved for {}", persona_name));
+                ops.display_message(format!("History saved for {}", persona_name));
                 log_info!("History saved for {}", persona_name);
             }
             Err(e) => {
                 log_error!("Failed to save history: {}", e);
-                app.add_message(format!("Failed to save history: {}", e));
+                ops.display_message(format!("Failed to save history: {}", e));
             }
         }
 
@@ -189,22 +233,22 @@ impl HistoryInfoCommand {
 }
 
 impl Command for HistoryInfoCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        let Some(pane) = app.current_pane_mut() else {
-            app.add_message("No agent available.");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        let Some(agent) = ops.current_agent_info_mut() else {
+            ops.display_message("No agent available.".to_string());
             return CommandResult::Continue;
         };
 
-        let msg_count = pane.connection.conversation.local_history.len();
-        let has_summary = pane.connection.conversation.local_history.iter()
+        let msg_count = agent.connection.conversation.local_history.len();
+        let has_summary = agent.connection.conversation.local_history.iter()
             .any(|m| m.content.contains("[Previous conversation summary:"));
-        let persona_name = pane.connection.conversation.persona.name.clone();
+        let persona_name = agent.connection.conversation.persona.name.clone();
 
         log_info!("{}: {} messages, Summary present: {}", persona_name, msg_count, has_summary);
-        app.add_message(format!(
+        ops.display_message(format!(
             "History for {}: {} messages, Summary present: {}",
             persona_name, msg_count, has_summary
-        ));
+        ).to_string());
 
         CommandResult::Continue
     }
@@ -224,24 +268,24 @@ impl ClearHistoryCommand {
 }
 
 impl Command for ClearHistoryCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        let Some(pane) = app.current_pane_mut() else {
-            app.add_message("No agent available.");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        let Some(agent) = ops.current_agent_info_mut() else {
+            ops.display_message("No agent available.".to_string());
             return CommandResult::Continue;
         };
 
-        let persona_name = pane.connection.conversation.persona.name.clone();
+        let persona_name = agent.connection.conversation.persona.name.clone();
         let path = format!("history/{}_history.json", &persona_name);
         let result = std::fs::remove_file(&path);
 
         match result {
             Ok(_) => {
                 log_info!("Cleared history for {}", persona_name);
-                app.add_message(format!("Cleared history for {}", persona_name));
+                ops.display_message(format!("Cleared history for {}", persona_name));
             }
             Err(_) => {
                 log_error!("No history for {}", persona_name);
-                app.add_message(format!("No history for {}", persona_name));
+                ops.display_message(format!("No history for {}", persona_name));
             }
         }
 
@@ -270,17 +314,17 @@ impl NewAgentCommand {
 }
 
 impl Command for NewAgentCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        if let Some(persona_ref) = app.personas.get(&self.persona_name) {
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        if let Some(persona_ref) = ops.get_persona(&self.persona_name) {
             let id = Uuid::new_v4();
-            app.add_agent(id, Arc::clone(persona_ref));
-            app.current_agent = Some(id);
-            app.add_message(format!(
+            ops.add_new_agent(id, persona_ref);
+            ops.set_current_agent_id(Some(id));
+            ops.display_message(format!(
                 "Created new agent with persona '{}'",
                 capitalize_first(&self.persona_name)
             ));
         } else {
-            app.add_message(format!(
+            ops.display_message(format!(
                 "Persona '{}' not found.",
                 capitalize_first(&self.persona_name)
             ));
@@ -304,12 +348,12 @@ impl CloseAgentCommand {
 }
 
 impl Command for CloseAgentCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        if let Some(id) = app.current_agent {
-            app.remove_agent(id);
-            app.add_message("Closed current agent.");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        if let Some(id) = ops.get_current_agent_id() {
+            ops.remove_agent(id);
+            ops.display_message("Closed current agent.".to_string());
         } else {
-            app.add_message("No agent to close.");
+            ops.display_message("No agent to close.".to_string());
         }
 
         CommandResult::Continue
@@ -330,27 +374,25 @@ impl AgentStatusCommand {
 }
 
 impl Command for AgentStatusCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
         let mut status = String::new();
-        status.push_str(&format!("Current agent: {}\n", app.current_agent
-            .and_then(|id| app.agents.get(&id))
-            .map(|pane| capitalize_first(&pane.persona_name))
+        status.push_str(&format!("Current agent: {}\n", ops.current_agent_info()
+            .map(|agent| capitalize_first(&agent.persona_name))
             .unwrap_or("<none>".to_string())));
 
-        status.push_str(&format!(" - Current pane: {}\n", app.current_pane_mut()
-            .map(|pane| capitalize_first(&pane.persona_name))
+        status.push_str(&format!(" - Current agent: {}\n", ops.current_agent_info_mut()
+            .map(|agent| capitalize_first(&agent.persona_name))
             .unwrap_or("<none>".to_string())));
 
         status.push_str(" - All agents:\n");
-
-        for id in &app.agent_order {
-            let pane = &app.agents[id];
-            let marker = if Some(*id) == app.current_agent {" ->"} else {" "};
-            status.push_str(&format!("{} {}\n", marker, capitalize_first(&pane.persona_name)));
+        let current_id = ops.get_current_agent_id();
+        for (agent_id, agent_name) in ops.get_all_agent_names() {
+            let marker = if Some(agent_id) == current_id { " ->"} else { " " };
+            status.push_str(&format!("{} {}\n", marker, capitalize_first(&agent_name)));
         }
-        status.push_str(&format!(" - Total tabs: {}", app.agent_order.len()));
+        status.push_str(&format!(" - Total tabs: {}", ops.get_agent_order().len()));
 
-        app.add_message(format!("{}", status));
+        ops.display_message(format!("{}", status));
 
         CommandResult::Continue
     }
@@ -370,15 +412,15 @@ impl SummarizeCommand {
 }
 
 impl Command for SummarizeCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        let Some(pane) = app.current_pane_mut() else {
-            app.add_message("No agent available.");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        let Some(agent) = ops.current_agent_info_mut() else {
+            ops.display_message("No agent available.".to_string());
             return CommandResult::Continue;
         };
 
-        let mut conn = pane.connection.clone();
-        let tx = pane.chunk_sender.clone();
-        app.add_message("Summarization started...");
+        let mut conn = agent.connection.clone();
+        let tx = agent.chunk_sender.clone();
+        ops.display_message("Summarization started...".to_string());
 
         tokio::spawn(async move {
             tx.send(StreamChunk::Info("Starting summarization...".to_string())).ok();
@@ -392,7 +434,7 @@ impl Command for SummarizeCommand {
             }
         });
 
-        app.add_message("Summarization task spawned.");
+        ops.display_message("Summarization task spawned.".to_string());
         CommandResult::Continue
     }
 }
@@ -411,7 +453,7 @@ impl QuitCommand {
 }
 
 impl Command for QuitCommand {
-    fn execute(&self, _app: &mut ShadowApp) -> CommandResult {
+    fn execute(&self, _ops: &mut dyn AgentOperations) -> CommandResult {
         CommandResult::Shutdown
     }
 }
@@ -426,9 +468,9 @@ impl ListAgentsCommand {
 }
 
 impl Command for ListAgentsCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
         let personas = vec!["shadow", "friday"];
-        app.add_message(format!("Available personas: {}", personas.join(", ")));
+        ops.display_message(format!("Available personas: {}", personas.join(", ")));
         CommandResult::Continue
     }
 }
@@ -439,8 +481,8 @@ struct UnimplementedCommand {
 }
 
 impl Command for UnimplementedCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        app.add_message(format!("Feature not yet implemented: {}", self.feature));
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        ops.display_message(format!("Feature not yet implemented: {}", self.feature));
         CommandResult::Continue
     }
 }
@@ -451,13 +493,13 @@ struct TweetCommand {
 }
 
 impl Command for TweetCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        let Some(pane) = app.current_pane_mut() else {
-            app.add_message("No agent available. Create one with 'new <persona>'");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        let Some(agent) = ops.current_agent_info_mut() else {
+            ops.display_message("No agent available. Create one with 'new <persona>'".to_string());
             return CommandResult::Continue;
         };
 
-        pane.add_message(r#"
+        agent.add_message(r#"
             If I can't get the ai to respond to me quick enough with something big enough to actually trigger the autoscroll. Then I'll do it myself.
             I believe I've learned enough to actually code some useful test commands. I mean sure it's not the way most people would do it. But yet
             again I'm not most people and I didn't go to school for this shit. I'm just making up as I go and hoping the code works. So far so good
@@ -473,24 +515,24 @@ struct DraftTweetCommand {
 }
 
 impl Command for DraftTweetCommand {
-    fn execute(&self, app: &mut ShadowApp) -> CommandResult {
-        let Some(pane) = app.current_pane_mut() else {
-            app.add_message("No agent available. Create one with 'new <persona>'");
+    fn execute(&self, ops: &mut dyn AgentOperations) -> CommandResult {
+        let Some(agent) = ops.current_agent_info_mut() else {
+            ops.display_message("No agent available. Create one with 'new <persona>'".to_string());
             return CommandResult::Continue;
         };
 
-        let persona_name = pane.persona_name.clone();
+        let persona_name = agent.persona_name.clone();
 
         if persona_name == "viral" {
-            pane.add_message(format!("> Tweet Draft: {}", self.text));
-            pane.is_waiting = true;
+            agent.add_message(format!("> Tweet Draft: {}", self.text));
+            agent.is_waiting = true;
 
-            if let Some(old_task) = pane.active_task.take() {
+            if let Some(old_task) = agent.active_task.take() {
                 old_task.abort();
             }
 
-            let mut connection = pane.connection.clone();
-            let tx = pane.chunk_sender.clone();
+            let mut connection = agent.connection.clone();
+            let tx = agent.chunk_sender.clone();
             let text_owned = self.text.clone();
 
             let handle = tokio::spawn(async move {
@@ -511,9 +553,9 @@ impl Command for DraftTweetCommand {
                 }
             });
 
-            pane.active_task = Some(handle);
+            agent.active_task = Some(handle);
         } else {
-            pane.add_message("Wrong Agent! Switch to Viral!")
+            agent.add_message("Wrong Agent! Switch to Viral!")
         }
 
         CommandResult::Continue

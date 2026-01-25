@@ -108,41 +108,34 @@ pub enum MessageSource {
 /// ```
 #[derive(Debug)]
 pub struct ShadowApp {
+    pub agent_manager: AgentManager,
+
     pub messages: VecDeque<String>,
     pub input: String,
     pub scroll: u16,
     pub max_history: usize,
-    pub user_input: Option<UserInput>,
     pub is_waiting: bool,
-
     pub input_scroll: usize,
     pub input_max_lines: u16,
-
-    pub personas: HashMap<String, PersonaRef>,
-    pub agents: HashMap<Uuid, AgentPane>,
-    pub agent_order: Vec<Uuid>,
-    pub current_agent: Option<Uuid>,
-
     pub unified_messages: VecDeque<UnifiedMessage>,
+
+    pub agent_panes: HashMap<Uuid, AgentPane>,
 }
 
 impl Default for ShadowApp {
     fn default() -> Self {
         let tui_config = &GLOBAL_CONFIG.tui;
         Self {
+            agent_manager: AgentManager::new(),
             messages: VecDeque::new(),
             input: String::new(),
             scroll: 0,
             max_history: tui_config.max_history_size,
-            user_input: None,
             is_waiting: false,
             input_scroll: 0,
             input_max_lines: tui_config.max_input_lines,
-            personas: HashMap::new(),
-            agents: HashMap::new(),
-            agent_order: Vec::new(),
-            current_agent: None,
             unified_messages: VecDeque::new(),
+            agent_panes: HashMap::new(),
         }
     }
 }
@@ -187,11 +180,7 @@ impl ShadowApp {
     /// app.load_personas(paths)?;
     /// ```
     pub fn load_personas(&mut self, persona_paths: Vec<&Path>) -> anyhow::Result<()> {
-        for path in persona_paths {
-            let persona = Persona::from_yaml_file(path)?;
-            self.personas.insert(persona.name.clone(), Arc::new(persona));
-        }
-        Ok(())
+        self.agent_manager.load_personas(persona_paths)
     }
 
     /// # add_agent
@@ -206,10 +195,9 @@ impl ShadowApp {
     /// **Returns:**
     /// None (mutates internal state)
     pub fn add_agent(&mut self, id: Uuid, persona: PersonaRef) {
-        let pane = AgentPane::new(id, persona);
-        self.agent_order.push(id);
-        self.current_agent = Some(id);
-        self.agents.insert(id, pane);
+        let pane = AgentPane::new(id, Arc::clone(&persona));
+        self.agent_panes.insert(id, pane);
+        self.agent_manager.add_agent(id, persona);
     }
 
     /// # get_agent_name
@@ -223,9 +211,7 @@ impl ShadowApp {
     /// **Returns:**
     /// String containing the persona name, or "<unknown>" if not found
     fn get_agent_name(&self, id: Uuid) -> String {
-        self.agents.get(&id)
-            .map(|pane| pane.persona_name.clone())
-            .unwrap_or("<unknown>".to_string())
+        self.agent_manager.get_agent_name(id)
     }
 
     /// # remove_agent
@@ -238,20 +224,9 @@ impl ShadowApp {
     ///
     /// **Returns:**
     /// None (mutates internal state)
-    pub fn remove_agent(&mut self, id: Uuid) 
-    {
-        if let Some(pane) = self.agents.get_mut(&id) {
-            if let Some(task) = pane.active_task.take() {
-                task.abort();
-            }
-            // Channel will be automatically dropped when pane is removed
-        }
-
-        self.agents.remove(&id);
-        self.agent_order.retain(|&x| x != id);
-        if self.current_agent == Some(id) {
-            self.current_agent = self.agent_order.last().cloned();
-        }
+    pub fn remove_agent(&mut self, id: Uuid) {
+        self.agent_panes.remove(&id);
+        self.agent_manager.remove_agent(id);
     }
 
     /// # switch_agent
@@ -265,18 +240,7 @@ impl ShadowApp {
     /// **Returns:**
     /// None (mutates current_agent)
     pub fn switch_agent(&mut self, next: bool) {
-        if self.agent_order.is_empty() {return;}
-        if let Some(current) = self.current_agent {
-            let idx = self.agent_order.iter().position(|&x| x == current).unwrap_or(0);
-            let new_idx = if next {
-                (idx +1) % self.agent_order.len()
-            } else {
-                (idx + self.agent_order.len() -1) % self.agent_order.len()
-            };
-            self.current_agent = Some(self.agent_order[new_idx]);
-        } else {
-            self.current_agent = self.agent_order.first().cloned();
-        }
+        self.agent_manager.switch_agent(next);
     }
 
     /// # current_pane
@@ -290,7 +254,8 @@ impl ShadowApp {
     /// **Returns:**
     /// `Option<&AgentPane>` - Reference to current pane, or None if no agent selected
     pub fn current_pane(&self) -> Option<&AgentPane> {
-        self.current_agent.and_then(|id| self.agents.get(&id))
+        self.agent_manager.current_agent
+            .and_then(|id| self.agent_panes.get(&id))
     }
 
     /// # current_pane_mut
@@ -301,7 +266,8 @@ impl ShadowApp {
     /// **Returns:**
     /// Option containing mutable reference to AgentPane, or None if no current agent
     pub fn current_pane_mut(&mut self) -> Option<&mut AgentPane> {
-        self.current_agent.and_then(move |id| self.agents.get_mut(&id))
+        self.agent_manager.current_agent
+            .and_then(move |id| self.agent_panes.get_mut(&id))
     }
     
     /// # poll_channels
@@ -321,53 +287,13 @@ impl ShadowApp {
     /// - Processes Error chunks by displaying error messages
     /// - Updates thinking animation frames while waiting
     pub fn poll_channels(&mut self) {
-        for (_agent_id, pane) in self.agents.iter_mut() {
-            if pane.is_waiting {
-                pane.thinking_animation_frame = (pane.thinking_animation_frame + 1) % 4;
-            }
-            
-            // Poll the receiver without taking it
-            while let Ok(chunk) = pane.chunk_receiver.try_recv() {
-                match chunk {
-                    StreamChunk::Delta(text) => {
-                        
-                        if let Some(last_msg) = pane.messages.back_mut() {
-                            if !last_msg.starts_with('>') {
-                                last_msg.push_str(&text);
-                            } else {
-                                pane.add_message(text);
-                            }
-                        } else {
-                            pane.add_message(text);
-                        }
-                        
-                        if pane.auto_scroll {
-                            pane.scroll_to_bottom();
-                        }
-                    }
+        self.agent_manager.poll_channels();
 
-                    StreamChunk::Complete{response_id, full_reply} => {
-                        pane.connection.set_last_response_id(response_id.clone());
-
-                        pane.connection.conversation.local_history.push(Message {
-                            role: "assistant".to_string(),
-                            content: full_reply,
-                        });
-
-                        pane.is_waiting = false;
-                        pane.active_task = None;
-                    }
-
-                    StreamChunk::Error(err) => {
-                        pane.add_message(format!("Error: {}", err));
-                        pane.add_message("Type your message again to retry.");
-                        pane.is_waiting = false;
-                        pane.active_task = None;
-                    }
-
-                    StreamChunk::Info(msg) => {
-                        log_info!("Info: {}", msg);
-                    }
+        for (id, pane_tui) in self.agent_panes.iter_mut() {
+            if let Some(agent_info) = self.agent_manager.agents.get(id) {
+                if agent_info.is_waiting {
+                    pane_tui.thinking_animation_frame =
+                        (pane_tui.thinking_animation_frame + 1) % 4;
                 }
             }
         }
@@ -451,7 +377,7 @@ impl ShadowApp {
                 true
             }
             KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                if let Some(id) = self.current_agent {
+                if let Some(id) = self.agent_manager.current_agent {
                     self.remove_agent(id);
                 }
                 true
@@ -546,7 +472,7 @@ impl ShadowApp {
         let line = self.input.trim().to_string();
         self.input.clear();
 
-        let Some(user_input) = self.user_input.clone() else {
+        let Some(user_input) = self.agent_manager.user_input.clone() else {
             self.add_message("No user input handler available.");
             return false;
         };
@@ -658,7 +584,7 @@ impl ShadowApp {
     fn pan_messages(&self) -> Vec<Line<'_>> {
         let mut lines: Vec<Line> = Vec::new();
         if let Some(pane) = self.current_pane() {
-            for msg in &pane.messages {
+            for msg in &pane.agent.messages {
                 for line_text in msg.split('\n') {
                     let content = if msg.starts_with('>') {
                         Line::from(Span::styled(
@@ -691,7 +617,7 @@ impl ShadowApp {
     /// Shows "Shadow is thinking..." animation when waiting, otherwise shows wrapped input text
     fn render_input(&self, frame: &mut Frame<'_>, area: Rect) {
         let is_waiting = self.current_pane()
-            .map(|p| p.is_waiting)
+            .map(|p| p.agent.is_waiting)
             .unwrap_or(false);
 
         let dots = match self.current_pane()
@@ -856,7 +782,7 @@ impl ShadowApp {
         );
 
         let agent_name = self.get_agent_name(
-            self.current_agent
+            self.agent_manager.current_agent
                 .unwrap_or(Uuid::nil())
         );
         let is_at_bottom = render_message_section(
