@@ -4,54 +4,54 @@
   "recent_messages": [
     {
       "role": "user",
-      "content": "Alright, let's see if this saves the history -this- time"
+      "content": "Hello shadow"
     },
     {
       "role": "assistant",
-      "content": "Fingers crossed on the history this round. If it sticks, we're golden—what's next on the agenda?"
+      "content": "Hello! Back at it with the integration, or something new on your mind?"
     },
     {
       "role": "user",
-      "content": "Well the history was saving. So you probably have the history from what just happened, minus knowing that we had a crash"
+      "content": "Taking a side track and learning some fundamental game dev stuff"
     },
     {
       "role": "assistant",
-      "content": "Got it—history's intact on my end, and yeah, the crash isn't in my logs. Smooth sailing now? What's the next test or task?"
+      "content": "Cool pivot—game dev fundamentals can be a rewarding detour. What corner of it are you diving into first?"
     },
     {
       "role": "user",
-      "content": "Yeah, seems smooth now. No crash on your response. Everything is moving smoothly"
+      "content": "Making a basic window"
     },
     {
       "role": "assistant",
-      "content": "Glad to hear it's all stable. Ready for whatever's next—your call."
+      "content": "Got it—starting with a window is a solid foundation for game dev. What framework or language are you using (e.g., SDL in C++, GLFW with OpenGL, or something like Pygame in Python)? I can walk you through the basics if you share that."
     },
     {
       "role": "user",
-      "content": "What was the very last thing you said to me"
+      "content": "That's all good. I have a youtube tutorial up right now. Just making sure Shadow is still running properly"
     },
     {
       "role": "assistant",
-      "content": "Glad to hear it's all stable. Ready for whatever's next—your call."
+      "content": "All systems nominal here—Shadow's humming along just fine. Enjoy the tutorial; hit me up if you run into any snags."
     },
     {
       "role": "user",
-      "content": "Excellent! We have smooth history loads between cli and tui"
+      "content": "hello from tui!"
     },
     {
       "role": "assistant",
-      "content": "Sounds like a solid victory. What's next in the lineup?"
+      "content": "Hello from the other side! TUI looking sharp?"
     },
     {
       "role": "user",
-      "content": "Now I can finally start integrating everything and making this application shine"
+      "content": "Looks crisp as ever, but I think the bottom of the display window is being clamped to high suddenly"
     },
     {
       "role": "assistant",
-      "content": "Sounds like you're on a roll—exciting phase ahead. If you need a hand with integration tweaks or brainstorming, just say the word."
+      "content": "Got it—sounds like a viewport or padding glitch. Can you describe the setup (e.g., library like Textual or Ratatui, terminal size)? That'll help pinpoint if it's a resize handler issue, overflow, or something else. In the meantime, try forcing a redraw or checking your layout constraints for any recent changes."
     }
   ],
-  "total_message_count": 14,
-  "last_updated": "2026-01-26T00:55:01.376192600+00:00",
+  "total_message_count": 16,
+  "last_updated": "2026-01-26T10:16:10.329418800+00:00",
   "summarization_count": 0
 }

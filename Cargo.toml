@@ -26,3 +26,5 @@ chrono = { version = "0.4.43", features = ["serde"] }
 thiserror = "1.0"
 walkdir = "2.4.9"
 async-trait = "0.1"
+tui-textarea = "0.4"
+arboard = "3"
