@@ -165,13 +165,14 @@ impl Command for SendMessageCommand {
             old_task.abort();
         }
 
-        let mut connection = agent.connection.clone();
+        let connection = agent.connection.clone();
         let tx = agent.chunk_sender.clone();
         let content_owned = self.content.clone();
 
         let handle = tokio::spawn(async move {
-            connection.add_user_message(&content_owned);
-            if let Err(e) = connection.handle_response_streaming(tx.clone()).await {
+            let mut conn = connection.lock().await;
+            conn.add_user_message(&content_owned);
+            if let Err(e) = conn.handle_response_streaming(tx.clone()).await {
                 let _ = tx.send(StreamChunk::Error(format!("{}", e)));
             }
         });
@@ -201,8 +202,16 @@ impl Command for SaveHistoryCommand {
             return CommandResult::Continue;
         };
 
-        let result = agent.connection.save_persona_history();
-        let persona_name = agent.connection.conversation.persona.name.clone();
+        let connection = agent.connection.clone();
+        let _ = agent; // Release ops borrow
+        
+        let Ok(conn) = connection.try_lock() else {
+            ops.display_message("Failed to acquire connection lock.".to_string());
+            return CommandResult::Continue;
+        };
+        let result = conn.save_persona_history();
+        let persona_name = conn.conversation.persona.name.clone();
+        drop(conn); // Release lock before using ops again
 
         match result {
             Ok(_) => {
@@ -239,10 +248,18 @@ impl Command for HistoryInfoCommand {
             return CommandResult::Continue;
         };
 
-        let msg_count = agent.connection.conversation.local_history.len();
-        let has_summary = agent.connection.conversation.local_history.iter()
-            .any(|m| m.content.contains("[Previous conversation summary:"));
-        let persona_name = agent.connection.conversation.persona.name.clone();
+        let connection = agent.connection.clone();
+        let _ = agent; // Release ops borrow
+        
+        let Ok(conn) = connection.try_lock() else {
+            ops.display_message("Failed to acquire connection lock.".to_string());
+            return CommandResult::Continue;
+        };
+        let msg_count = conn.conversation.local_history.len();
+        let has_summary = conn.conversation.local_history.iter()
+            .any(|msg| msg.role == "system" && msg.content.contains("[Previous conversation summary:"));
+        let persona_name = conn.conversation.persona.name.clone();
+        drop(conn); // Release lock before using ops again
 
         log_info!("{}: {} messages, Summary present: {}", persona_name, msg_count, has_summary);
         ops.display_message(format!(
@@ -274,7 +291,12 @@ impl Command for ClearHistoryCommand {
             return CommandResult::Continue;
         };
 
-        let persona_name = agent.connection.conversation.persona.name.clone();
+        let Ok(conn) = agent.connection.try_lock() else {
+            ops.display_message("Failed to acquire connection lock.".to_string());
+            return CommandResult::Continue;
+        };
+        let persona_name = conn.conversation.persona.name.clone();
+        drop(conn);
         let path = format!("history/{}_history.json", &persona_name);
         let result = std::fs::remove_file(&path);
 
@@ -418,12 +440,13 @@ impl Command for SummarizeCommand {
             return CommandResult::Continue;
         };
 
-        let mut conn = agent.connection.clone();
+        let connection = agent.connection.clone();
         let tx = agent.chunk_sender.clone();
         ops.display_message("Summarization started...".to_string());
 
         tokio::spawn(async move {
             tx.send(StreamChunk::Info("Starting summarization...".to_string())).ok();
+            let mut conn = connection.lock().await;
             if let Err(e) = conn.summarize_history().await {
                 tx.send(StreamChunk::Error(format!("Summarization error: {}", e))).ok();
             } else {
@@ -531,11 +554,12 @@ impl Command for DraftTweetCommand {
                 old_task.abort();
             }
 
-            let mut connection = agent.connection.clone();
+            let connection = agent.connection.clone();
             let tx = agent.chunk_sender.clone();
             let text_owned = self.text.clone();
 
             let handle = tokio::spawn(async move {
+                let mut connection = connection.lock().await;
                 let define_tweet = format!(r#"
                     Please draft a tweet with the following content: "{}"
                     Keep it under 280 characters and suitable for Twitter.

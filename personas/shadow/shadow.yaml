@@ -43,7 +43,7 @@ tools:
   - twitter_post
 
 # Keep history during session, clear on restart
-enable_history: false
+enable_history: true
 history_message_limit: 12
 summary_threshold: 20
 api_provider: "grok"

@@ -111,13 +111,10 @@ impl AgentManager {
                         }
                     }
 
-                    StreamChunk::Complete{response_id, full_reply} => {
-                        agent.connection.set_last_response_id(response_id.clone());
-
-                        agent.connection.conversation.local_history.push(Message {
-                            role: "assistant".to_string(),
-                            content: full_reply,
-                        });
+                    StreamChunk::Complete{response_id, full_reply: _} => {
+                        if let Ok(mut conn) = agent.connection.try_lock() {
+                            conn.set_last_response_id(response_id.clone());
+                        }
 
                         agent.is_waiting = false;
                         agent.active_task = None;

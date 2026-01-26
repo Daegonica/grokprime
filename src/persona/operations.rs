@@ -77,15 +77,15 @@ impl AgentOperations for AgentManager {
 
 impl AgentOperations for ShadowApp {
     fn current_agent_info(&self) -> Option<&AgentInfo> {
-        self.current_pane().map(|pane| &pane.agent)
+        self.agent_manager.current_pane()
     }
 
     fn current_agent_info_mut(&mut self) -> Option<&mut AgentInfo> {
-        self.current_pane_mut().map(|pane| &mut pane.agent)
+        self.agent_manager.current_pane_mut()
     }
 
     fn get_agent_info(&self, id: Uuid) -> Option<&AgentInfo> {
-        self.agent_panes.get(&id).map(|pane| &pane.agent)
+        self.agent_manager.agents.get(&id)
     }
 
     fn get_agent_info_mut(&mut self, id: Uuid) -> Option<&mut AgentInfo> {

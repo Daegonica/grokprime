@@ -10,8 +10,10 @@ use crate::llm::{
 };
 use crate::grok::client::GrokClient;
 use crate::claude::client::ClaudeClient;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-type DynamicConnection = Connection<AnyClient>;
+type DynamicConnection = Arc<Mutex<Connection<AnyClient>>>;
 
 #[derive(Debug)]
 pub struct AgentInfo {
@@ -42,7 +44,7 @@ impl AgentInfo {
         Self {
             id,
             persona_name: persona.name.clone(),
-            connection: Connection::new_without_output(client, persona),
+            connection: Arc::new(Mutex::new(Connection::new_without_output(client, persona))),
             messages: VecDeque::new(),
             is_waiting: false,
 

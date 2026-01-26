@@ -114,7 +114,6 @@ pub struct ShadowApp {
     pub input: String,
     pub scroll: u16,
     pub max_history: usize,
-    pub is_waiting: bool,
     pub input_scroll: usize,
     pub input_max_lines: u16,
     pub unified_messages: VecDeque<UnifiedMessage>,
@@ -131,7 +130,6 @@ impl Default for ShadowApp {
             input: String::new(),
             scroll: 0,
             max_history: tui_config.max_history_size,
-            is_waiting: false,
             input_scroll: 0,
             input_max_lines: tui_config.max_input_lines,
             unified_messages: VecDeque::new(),
@@ -195,7 +193,7 @@ impl ShadowApp {
     /// **Returns:**
     /// None (mutates internal state)
     pub fn add_agent(&mut self, id: Uuid, persona: PersonaRef) {
-        let pane = AgentPane::new(id, Arc::clone(&persona));
+        let pane = AgentPane::new();
         self.agent_panes.insert(id, pane);
         self.agent_manager.add_agent(id, persona);
     }
@@ -520,7 +518,11 @@ impl ShadowApp {
     /// **Details:**
     /// Returns 3 rows if waiting for response, otherwise calculates based on wrapped text
     fn calculate_input_height(&self, width: u16) -> u16 {
-        if self.is_waiting{
+        let is_waiting = self.agent_manager.current_pane()
+            .map(|a| a.is_waiting)
+            .unwrap_or(false);
+        
+        if is_waiting {
             return 3;
         }
 
@@ -571,7 +573,7 @@ impl ShadowApp {
     /// # pan_messages
     ///
     /// **Purpose:**
-    /// Converts current pane's message queue into formatted Lines for rendering.
+    /// Converts current agent's message queue into formatted Lines for rendering.
     ///
     /// **Parameters:**
     /// None
@@ -583,8 +585,8 @@ impl ShadowApp {
     /// User messages (starting with '>') are styled in light yellow and bold
     fn pan_messages(&self) -> Vec<Line<'_>> {
         let mut lines: Vec<Line> = Vec::new();
-        if let Some(pane) = self.current_pane() {
-            for msg in &pane.agent.messages {
+        if let Some(agent) = self.agent_manager.current_pane() {
+            for msg in &agent.messages {
                 for line_text in msg.split('\n') {
                     let content = if msg.starts_with('>') {
                         Line::from(Span::styled(
@@ -616,8 +618,8 @@ impl ShadowApp {
     /// **Details:**
     /// Shows "Shadow is thinking..." animation when waiting, otherwise shows wrapped input text
     fn render_input(&self, frame: &mut Frame<'_>, area: Rect) {
-        let is_waiting = self.current_pane()
-            .map(|p| p.agent.is_waiting)
+        let is_waiting = self.agent_manager.current_pane()
+            .map(|a| a.is_waiting)
             .unwrap_or(false);
 
         let dots = match self.current_pane()
@@ -799,7 +801,11 @@ impl ShadowApp {
            pane.auto_scroll = is_at_bottom;
         }
 
-        if input_area.height > 2 && input_area.width > 6 && !self.is_waiting {
+        let is_waiting = self.agent_manager.current_pane()
+            .map(|a| a.is_waiting)
+            .unwrap_or(false);
+        
+        if input_area.height > 2 && input_area.width > 6 && !is_waiting {
             let width = input_area.width.saturating_sub(6) as usize;
             let wrapped = self.wrap_input_text(width);
 

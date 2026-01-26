@@ -4,14 +4,54 @@
   "recent_messages": [
     {
       "role": "user",
-      "content": "Hello, who are you"
+      "content": "Alright, let's see if this saves the history -this- time"
     },
     {
       "role": "assistant",
-      "content": "Hello, I'm Shadow, a capable AI assistant here to help when you need it. What can I do for you?"
+      "content": "Fingers crossed on the history this round. If it sticks, we're golden—what's next on the agenda?"
+    },
+    {
+      "role": "user",
+      "content": "Well the history was saving. So you probably have the history from what just happened, minus knowing that we had a crash"
+    },
+    {
+      "role": "assistant",
+      "content": "Got it—history's intact on my end, and yeah, the crash isn't in my logs. Smooth sailing now? What's the next test or task?"
+    },
+    {
+      "role": "user",
+      "content": "Yeah, seems smooth now. No crash on your response. Everything is moving smoothly"
+    },
+    {
+      "role": "assistant",
+      "content": "Glad to hear it's all stable. Ready for whatever's next—your call."
+    },
+    {
+      "role": "user",
+      "content": "What was the very last thing you said to me"
+    },
+    {
+      "role": "assistant",
+      "content": "Glad to hear it's all stable. Ready for whatever's next—your call."
+    },
+    {
+      "role": "user",
+      "content": "Excellent! We have smooth history loads between cli and tui"
+    },
+    {
+      "role": "assistant",
+      "content": "Sounds like a solid victory. What's next in the lineup?"
+    },
+    {
+      "role": "user",
+      "content": "Now I can finally start integrating everything and making this application shine"
+    },
+    {
+      "role": "assistant",
+      "content": "Sounds like you're on a roll—exciting phase ahead. If you need a hand with integration tweaks or brainstorming, just say the word."
     }
   ],
-  "total_message_count": 2,
-  "last_updated": "2026-01-23T04:24:56.263315800+00:00",
+  "total_message_count": 14,
+  "last_updated": "2026-01-26T00:55:01.376192600+00:00",
   "summarization_count": 0
 }

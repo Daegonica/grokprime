@@ -38,8 +38,6 @@ use ratatui::prelude::*;
 use std::io::stdout;
 use std::time::Duration;
 
-
-
 /// # main
 ///
 /// **Purpose:**
@@ -238,15 +236,21 @@ async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
                     InputAction::SendAsMessage(content) => {
                         if let Some(agent) = app.current_pane_mut() {
                             agent.add_message(format!("> {}", content));
-                            agent.connection.add_user_message(&content);
+                            {
+                                let mut connection = agent.connection.lock().await;
+                                connection.add_user_message(&content);
+                            }
                             
                             let msg_count_before = agent.messages.len();
 
                             println!("Shadow is thinking...\n");
                             
-                            if let Err(e) = agent.connection.handle_response().await {
-                                eprintln!("Error: {}", e);
-                                continue;
+                            {
+                                let mut connection = agent.connection.lock().await;
+                                if let Err(e) = connection.handle_response().await {
+                                    eprintln!("Error: {}", e);
+                                    continue;
+                                }
                             }
 
                             loop {
@@ -298,7 +302,7 @@ async fn run_cli_mode(persona: &str) -> Result<(), Box<dyn std::error::Error>> {
     }
     
     if let Some(agent) = app.current_pane_mut() {
-        let _ = agent.connection.save_persona_history();
+        let _ = agent.connection.lock().await.save_persona_history();
     }
 
     Ok(())
